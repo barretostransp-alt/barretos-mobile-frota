@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist Pré-Viagem — Grupo Barreto's</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#090A0D;--surface:#0F1117;--card:#151820;--border:#1E2130;
+  --gold:#F5B800;--gold-dim:rgba(245,184,0,.12);--gold-b:rgba(245,184,0,.28);
+  --txt:#E8EAF0;--txt-dim:#6B7280;--txt-mid:#9CA3AF;
+  --green:#22C55E;--red:#EF4444;--blue:#3B82F6;--r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;}
+body{padding-bottom:90px;}
+
+/* ── TOPBAR ── */
+.topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;position:sticky;top:0;z-index:50;}
+.tb-logo{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--gold);white-space:nowrap;}
+.tb-sep{color:var(--border);font-size:18px;}
+.tb-title{font-size:12px;color:var(--txt-mid);font-weight:600;}
+.tb-r{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.bsm{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--txt-dim);
+  padding:5px 10px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;
+  transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.bsm:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── LAYOUT ── */
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 0;}
+.hero{padding:18px 4px 14px;}
+.hero h1{font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--txt);margin-bottom:4px;}
+.hero p{font-size:12px;color:var(--txt-dim);}
+
+/* ── PROGRESS ── */
+.prog-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+.prog-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.prog-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--txt-dim);}
+.prog-count{font-size:12px;font-weight:700;color:var(--gold);font-family:'Syne',sans-serif;}
+.prog-bar{height:6px;background:var(--card);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--gold);border-radius:4px;width:0%;transition:width .25s ease;}
+.prog-fill.danger{background:var(--red);}
+
+/* ── IDENTIFICAÇÃO ── */
+.fsec{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.fst{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);
+  margin-bottom:11px;display:flex;align-items:center;gap:6px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.fg-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.fg-grid.g3{grid-template-columns:1fr 1fr 1fr;}
+.fg{display:flex;flex-direction:column;gap:3px;}
+.fg.full{grid-column:1/-1;}
+.fg label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-dim);}
+.fg input,.fg select,.fg textarea{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--txt);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 10px;outline:none;transition:border-color .15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);}
+.fg select option{background:var(--card);}
+@media (max-width:560px){.fg-grid,.fg-grid.g3{grid-template-columns:1fr 1fr;}}
+
+/* ── CATEGORIAS DE ITENS ── */
+.cat{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+.cat-hd{padding:12px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--border);
+  cursor:pointer;user-select:none;}
+.cat-ic{width:26px;height:26px;border-radius:7px;background:var(--gold-dim);border:1px solid var(--gold-b);
+  display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:13px;flex-shrink:0;}
+.cat-nm{flex:1;font-size:12px;font-weight:700;color:var(--txt);}
+.cat-ct{font-size:10px;color:var(--txt-dim);background:var(--card);padding:2px 8px;border-radius:10px;font-weight:600;}
+.cat-chev{color:var(--txt-dim);font-size:14px;transition:transform .2s;}
+.cat.open .cat-chev{transform:rotate(180deg);}
+.cat-body{padding:6px 10px 10px;display:none;}
+.cat.open .cat-body{display:block;}
+
+/* ── ITEM DE CHECK ── */
+.item{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--border);}
+.item:last-child{border-bottom:none;}
+.item-nm{flex:1;font-size:12.5px;color:var(--txt);}
+.item-nm small{display:block;font-size:10px;color:var(--txt-dim);font-weight:400;margin-top:1px;}
+.seg{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;flex-shrink:0;}
+.seg button{background:var(--card);border:none;color:var(--txt-dim);font-size:13px;width:34px;height:30px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;border-right:1px solid var(--border);}
+.seg button:last-child{border-right:none;}
+.seg button.ok-active{background:rgba(34,197,94,.18);color:var(--green);}
+.seg button.bad-active{background:rgba(239,68,68,.18);color:var(--red);}
+.seg button.na-active{background:rgba(107,114,128,.25);color:var(--txt-mid);}
+.item.flagged{background:rgba(239,68,68,.05);border-radius:7px;}
+.obs-toggle{background:none;border:none;color:var(--txt-dim);font-size:13px;cursor:pointer;flex-shrink:0;padding:2px;}
+.obs-toggle.has-text{color:var(--gold);}
+.item-obs{display:none;grid-column:1/-1;margin-top:6px;}
+.item-obs.open{display:block;}
+.item-obs textarea{width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;
+  color:var(--txt);font-size:12px;padding:7px 9px;outline:none;font-family:'DM Sans',sans-serif;resize:vertical;min-height:50px;}
+.item-obs textarea:focus{border-color:var(--gold);}
+.item-row{display:flex;flex-direction:column;gap:0;width:100%;}
+.item-main{display:flex;align-items:center;gap:10px;width:100%;}
+
+/* ── FOTOS DO ITEM (só aparece quando reprovado) ── */
+.item-fotos{margin-top:8px;}
+.foto-add-btn{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px dashed var(--border);
+  border-radius:6px;color:var(--txt-dim);font-size:11px;padding:7px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.foto-add-btn:hover{border-color:var(--gold);color:var(--gold);}
+.foto-thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.foto-thumb{position:relative;width:56px;height:56px;border-radius:6px;overflow:hidden;border:1px solid var(--border);flex-shrink:0;}
+.foto-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.foto-thumb .foto-rm{position:absolute;top:1px;right:1px;width:16px;height:16px;background:rgba(0,0,0,.65);
+  border:none;border-radius:4px;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.foto-thumb .foto-status{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--gold);}
+.foto-thumb .foto-status.done{background:var(--green);}
+.foto-thumb .foto-status.err{background:var(--red);}
+
+/* ── ASSINATURA ── */
+.sign-box{background:var(--card);border:1px dashed var(--border);border-radius:8px;height:120px;
+  display:flex;align-items:center;justify-content:center;color:var(--txt-dim);font-size:11px;cursor:pointer;
+  position:relative;overflow:hidden;margin-top:4px;}
+.sign-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;}
+.sign-box.signed{border-style:solid;border-color:var(--gold-b);}
+.sign-hint{position:relative;z-index:1;pointer-events:none;}
+.sign-clear{margin-top:6px;font-size:10px;color:var(--txt-dim);background:none;border:none;cursor:pointer;
+  text-decoration:underline;padding:0;}
+
+/* ── RESUMO FINAL ── */
+.summary{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.summary-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
+.summary-row:last-child{border-bottom:none;}
+.summary-row span:first-child{font-size:11px;color:var(--txt-dim);}
+.summary-row span:last-child{font-size:13px;font-weight:700;font-family:'Syne',sans-serif;}
+.ok-txt{color:var(--green);}
+.bad-txt{color:var(--red);}
+.na-txt{color:var(--txt-mid);}
+
+.alert-box{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;
+  padding:10px 12px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start;}
+.alert-box i{color:var(--red);font-size:16px;flex-shrink:0;margin-top:1px;}
+.alert-box p{font-size:11px;color:var(--txt);line-height:1.5;}
+.alert-box strong{color:var(--red);}
+
+/* ── FOOTER FIXO ── */
+.foot-bar{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
+  padding:10px 14px;display:flex;gap:9px;z-index:60;box-shadow:0 -4px 20px rgba(0,0,0,.4);}
+.foot-bar .wrap-inner{max-width:720px;margin:0 auto;display:flex;gap:9px;width:100%;}
+.bprim{flex:1;background:var(--gold);color:#111;border:none;border-radius:8px;padding:12px 16px;font-size:13px;
+  font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
+.bprim:hover{opacity:.88;}
+.bprim:disabled{opacity:.35;cursor:default;}
+.bprim.danger{background:var(--red);color:#fff;}
+.bgh{background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--txt-dim);
+  padding:12px 16px;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;}
+.bgh:hover{border-color:var(--txt-dim);color:var(--txt);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);
+  border:1px solid var(--gold-b);border-radius:8px;padding:10px 18px;font-size:12px;color:var(--txt);
+  display:flex;align-items:center;gap:8px;opacity:0;pointer-events:none;transition:all .25s;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.5);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{border-color:rgba(239,68,68,.4);}
+.toast i{color:var(--green);font-size:15px;}
+.toast.err i{color:var(--red);}
+
+/* ── SUCCESS SCREEN ── */
+.success-ov{display:none;position:fixed;inset:0;background:var(--bg);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.success-ov.show{display:flex;}
+.success-box{text-align:center;max-width:360px;}
+.success-ic{width:64px;height:64px;border-radius:50%;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--green);font-size:30px;}
+.success-box h2{font-family:'Syne',sans-serif;font-size:17px;color:var(--txt);margin-bottom:6px;}
+.success-box p{font-size:12px;color:var(--txt-dim);line-height:1.6;margin-bottom:20px;}
+
+.spinner{width:14px;height:14px;border:2px solid rgba(17,17,17,.25);border-top-color:#111;
+  border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="tb-logo">BARRETO'S</span>
+  <span class="tb-sep">·</span>
+  <span class="tb-title">Checklist Pré-Viagem</span>
+  <div class="tb-r">
+    <button class="bsm" id="btn-clear-all" title="Limpar tudo"><i class="ti ti-eraser"></i></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <h1>Checklist Pré-Viagem</h1>
+    <p>Preencha antes de sair com o veículo. Itens reprovados geram alerta para o gestor.</p>
+  </div>
+
+  <div class="prog-box">
+    <div class="prog-top">
+      <span class="prog-label">Progresso da inspeção</span>
+      <span class="prog-count" id="prog-count">0 / 0</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+  </div>
+
+  <div id="alert-area"></div>
+
+  <!-- IDENTIFICAÇÃO -->
+  <div class="fsec">
+    <div class="fst"><i class="ti ti-id"></i> Identificação</div>
+    <div class="fg-grid">
+      <div class="fg full" style="grid-column:1/-1">
+        <label>Motorista *</label>
+        <input type="text" id="f-motorista" placeholder="Nome completo">
+      </div>
+      <div class="fg">
+        <label>Placa *</label>
+        <input type="text" id="f-placa" placeholder="ABC1D23" style="text-transform:uppercase">
+      </div>
+      <div class="fg">
+        <label>Data / Hora</label>
+        <input type="text" id="f-data" readonly>
+      </div>
+    </div>
+  </div>
+
+  <!-- PNEUS E RODAS -->
+  <div class="cat open" data-cat="Pneus e Rodas">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-circle-dot"></i></div>
+      <div class="cat-nm">Pneus e Rodas</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Calibragem de todos os pneus|Inclui pneus internos do eixo duplo"></div>
+      <div class="item" data-item="Desgaste e cortes na banda de rodagem"></div>
+      <div class="item" data-item="Estepe presente e calibrado"></div>
+      <div class="item" data-item="Parafusos e porcas das rodas firmes"></div>
+    </div>
+  </div>
+
+  <!-- FREIOS E SUSPENSÃO -->
+  <div class="cat" data-cat="Freios e Suspensão">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-disc"></i></div>
+      <div class="cat-nm">Freios e Suspensão</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Freio de serviço (pedal) responde bem"></div>
+      <div class="item" data-item="Freio de estacionamento funciona"></div>
+      <div class="item" data-item="Sem ruído anormal na suspensão"></div>
+      <div class="item" data-item="Quinta roda travada e lubrificada|Apenas para cavalo mecânico"></div>
+    </div>
+  </div>
+
+  <!-- FLUIDOS E NÍVEIS -->
+  <div class="cat" data-cat="Fluidos e Níveis">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-droplet"></i></div>
+      <div class="cat-nm">Fluidos e Níveis</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Nível de óleo do motor"></div>
+      <div class="item" data-item="Água do radiador / arrefecimento"></div>
+      <div class="item" data-item="Fluido de freio"></div>
+      <div class="item" data-item="Sem vazamentos visíveis embaixo do veículo"></div>
+      <div class="item" data-item="Nível de combustível suficiente para a rota"></div>
+    </div>
+  </div>
+
+  <!-- ELÉTRICA E ILUMINAÇÃO -->
+  <div class="cat" data-cat="Elétrica e Iluminação">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-bulb"></i></div>
+      <div class="cat-nm">Elétrica e Iluminação</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Faróis baixo / alto funcionando"></div>
+      <div class="item" data-item="Lanternas, setas e luz de ré"></div>
+      <div class="item" data-item="Luz de freio funcionando"></div>
+      <div class="item" data-item="Bateria sem sinais de oxidação"></div>
+      <div class="item" data-item="Painel sem luzes de advertência acesas"></div>
+    </div>
+  </div>
+
+  <!-- CABINE E VISIBILIDADE -->
+  <div class="cat" data-cat="Cabine e Visibilidade">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-steering-wheel"></i></div>
+      <div class="cat-nm">Cabine e Visibilidade</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Para-brisa sem trincas que atrapalhem visão"></div>
+      <div class="item" data-item="Palhetas do limpador em bom estado"></div>
+      <div class="item" data-item="Retrovisores ajustados e íntegros"></div>
+      <div class="item" data-item="Cinto de segurança funcionando"></div>
+      <div class="item" data-item="Buzina funcionando"></div>
+    </div>
+  </div>
+
+  <!-- EQUIPAMENTOS OBRIGATÓRIOS -->
+  <div class="cat" data-cat="Equipamentos Obrigatórios">
+    <div class="cat-hd" onclick="toggleCat(this)">
+      <div class="cat-ic"><i class="ti ti-first-aid-kit"></i></div>
+      <div class="cat-nm">Equipamentos Obrigatórios</div>
+      <div class="cat-ct" data-ct>0/0</div>
+      <i class="ti ti-chevron-down cat-chev"></i>
+    </div>
+    <div class="cat-body">
+      <div class="item" data-item="Triângulo de sinalização"></div>
+      <div class="item" data-item="Extintor de incêndio (carga e validade)"></div>
+      <div class="item" data-item="Macaco e chave de roda"></div>
+      <div class="item" data-item="Kit de primeiros socorros"></div>
+    </div>
+  </div>
+
+  <!-- OBSERVAÇÕES GERAIS -->
+  <div class="fsec">
+    <div class="fst"><i class="ti ti-note"></i> Observações Gerais</div>
+    <div class="fg full">
+      <textarea id="f-obs-geral" rows="3" placeholder="Algo a relatar sobre o estado geral do veículo?"></textarea>
+    </div>
+  </div>
+
+  <!-- ASSINATURA -->
+  <div class="fsec">
+    <div class="fst"><i class="ti ti-signature"></i> Assinatura do Motorista</div>
+    <div class="sign-box" id="sign-box">
+      <canvas id="sign-canvas"></canvas>
+      <span class="sign-hint" id="sign-hint">Assine com o dedo ou mouse</span>
+    </div>
+    <button class="sign-clear" id="sign-clear">Limpar assinatura</button>
+  </div>
+
+  <!-- RESUMO -->
+  <div class="summary" id="summary-box" style="display:none">
+    <div class="fst" style="border:none;margin-bottom:8px;padding-bottom:0"><i class="ti ti-clipboard-check"></i> Resumo da Inspeção</div>
+    <div class="summary-row"><span>Itens conformes</span><span class="ok-txt" id="sum-ok">0</span></div>
+    <div class="summary-row"><span>Itens reprovados</span><span class="bad-txt" id="sum-bad">0</span></div>
+    <div class="summary-row"><span>Não se aplica</span><span class="na-txt" id="sum-na">0</span></div>
+    <div class="summary-row"><span>Total de itens</span><span id="sum-total">0</span></div>
+  </div>
+
+</div>
+
+<div class="success-ov" id="success-ov">
+  <div class="success-box">
+    <div class="success-ic"><i class="ti ti-check"></i></div>
+    <h2>Checklist enviado</h2>
+    <p id="success-msg">A inspeção foi registrada com sucesso. Bom trabalho e boa viagem!</p>
+    <button class="bprim" style="flex:none" onclick="resetForm()"><i class="ti ti-plus"></i> Nova inspeção</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="ti ti-check"></i><span id="toast-msg"></span></div>
+
+<div class="foot-bar">
+  <div class="wrap-inner">
+    <button class="bgh" id="btn-cancel" onclick="resetForm()">Limpar</button>
+    <button class="bprim" id="btn-submit" disabled><i class="ti ti-send"></i> <span id="btn-submit-txt">Enviar Checklist</span></button>
+  </div>
+</div>
+
+<script>
+// ── Config ── Apps Script + Drive (mesmo padrão dos anexos do Kanban) —
+// preencher com o Web App da Frota assim que ele existir. Enquanto estiver
+// vazio, o envio final e as fotos ficam só em log local (nada se perde,
+// mas nada vai pro Drive de verdade ainda).
+const WEBAPP_URL = ""; // ex: "https://script.google.com/macros/s/AKfycb.../exec"
+
+let itemStates = {}; // { "nome do item": "ok"|"bad"|"na" }
+let itemObs = {};    // { "nome do item": "texto observação" }
+let itemFotos = {};  // { "nome do item": [{file, previewUrl, driveId, status}] }
+let allItems = [];
+
+function e(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+function buildItems(){
+  document.querySelectorAll('.item[data-item]').forEach(function(el){
+    const raw = el.getAttribute('data-item');
+    const parts = raw.split('|');
+    const nome = parts[0];
+    const sub = parts[1] || '';
+    allItems.push(nome);
+    itemFotos[nome] = [];
+    el.innerHTML =
+      '<div class="item-row">' +
+        '<div class="item-main">' +
+          '<div class="item-nm">' + e(nome) + (sub ? '<small>'+e(sub)+'</small>' : '') + '</div>' +
+          '<button class="obs-toggle" data-obs-btn data-name="'+e(nome)+'" title="Adicionar observação"><i class="ti ti-message-circle-2"></i></button>' +
+          '<div class="seg" data-seg data-name="'+e(nome)+'">' +
+            '<button data-val="ok" title="Conforme"><i class="ti ti-check"></i></button>' +
+            '<button data-val="bad" title="Reprovado"><i class="ti ti-x"></i></button>' +
+            '<button data-val="na" title="Não se aplica">—</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="item-obs" data-obs>' +
+          '<textarea placeholder="Descreva o problema encontrado..." data-obs-input></textarea>' +
+          '<div class="item-fotos" data-fotos>' +
+            '<label class="foto-add-btn">' +
+              '<i class="ti ti-camera"></i> Fotografar problema' +
+              '<input type="file" accept="image/*" capture="environment" multiple data-foto-input style="display:none">' +
+            '</label>' +
+            '<div class="foto-thumbs" data-foto-thumbs></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  // Bind seg buttons
+  document.querySelectorAll('[data-seg]').forEach(function(seg){
+    const name = seg.getAttribute('data-name');
+    seg.querySelectorAll('button').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const val = btn.getAttribute('data-val');
+        setItemState(name, val, seg);
+      });
+    });
+  });
+
+  // Bind obs toggle
+  document.querySelectorAll('[data-obs-btn]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const wrap = btn.closest('.item-row').querySelector('[data-obs]');
+      wrap.classList.toggle('open');
+    });
+  });
+
+  document.querySelectorAll('[data-obs-input]').forEach(function(ta){
+    ta.addEventListener('input', function(){
+      const row = ta.closest('.item-row');
+      const name = row.querySelector('[data-obs-btn]').getAttribute('data-name');
+      itemObs[name] = ta.value;
+      const btn = row.querySelector('[data-obs-btn]');
+      btn.classList.toggle('has-text', !!ta.value.trim());
+    });
+  });
+
+  // Bind foto input
+  document.querySelectorAll('[data-foto-input]').forEach(function(inp){
+    inp.addEventListener('change', function(){
+      const row = inp.closest('.item-row');
+      const name = row.querySelector('[data-obs-btn]').getAttribute('data-name');
+      Array.from(inp.files || []).forEach(function(file){ addFoto(name, file); });
+      inp.value = ''; // permite escolher o mesmo arquivo de novo depois de remover
+    });
+  });
+
+  updateCategoryCounts();
+  updateProgress();
+}
+
+function addFoto(name, file){
+  const item = { file: file, previewUrl: URL.createObjectURL(file), driveId: null, status: 'pendente' };
+  itemFotos[name].push(item);
+  renderFotos(name);
+}
+
+function removerFoto(name, idx){
+  itemFotos[name].splice(idx, 1);
+  renderFotos(name);
+}
+
+function renderFotos(name){
+  const row = Array.from(document.querySelectorAll('.item-row')).find(function(r){
+    return r.querySelector('[data-obs-btn]').getAttribute('data-name') === name;
+  });
+  if(!row) return;
+  const wrap = row.querySelector('[data-foto-thumbs]');
+  wrap.innerHTML = itemFotos[name].map(function(f, idx){
+    const statusClass = f.status === 'enviado' ? 'done' : (f.status === 'erro' ? 'err' : '');
+    return '<div class="foto-thumb"><img src="'+f.previewUrl+'">' +
+      '<button class="foto-rm" onclick="removerFoto(\''+name.replace(/'/g,"\\'")+'\','+idx+')"><i class="ti ti-x"></i></button>' +
+      '<div class="foto-status '+statusClass+'"></div></div>';
+  }).join('');
+}
+
+function setItemState(name, val, segEl){
+  itemStates[name] = val;
+  segEl.querySelectorAll('button').forEach(function(b){
+    b.classList.remove('ok-active','bad-active','na-active');
+  });
+  const activeBtn = segEl.querySelector('[data-val="'+val+'"]');
+  activeBtn.classList.add(val + '-active');
+
+  const itemEl = segEl.closest('.item');
+  itemEl.classList.toggle('flagged', val === 'bad');
+
+  // Auto-abre observação (e o botão de foto junto) se reprovado
+  if(val === 'bad'){
+    const obsWrap = itemEl.querySelector('[data-obs]');
+    obsWrap.classList.add('open');
+    obsWrap.querySelector('textarea').focus();
+  }
+
+  updateCategoryCounts();
+  updateProgress();
+  renderAlerts();
+}
+
+function updateCategoryCounts(){
+  document.querySelectorAll('.cat').forEach(function(cat){
+    const items = cat.querySelectorAll('.item[data-item]');
+    let answered = 0;
+    items.forEach(function(it){
+      const seg = it.querySelector('[data-seg]');
+      const name = seg.getAttribute('data-name');
+      if(itemStates[name]) answered++;
+    });
+    cat.querySelector('[data-ct]').textContent = answered + '/' + items.length;
+  });
+}
+
+function updateProgress(){
+  const total = allItems.length;
+  const answered = Object.keys(itemStates).length;
+  document.getElementById('prog-count').textContent = answered + ' / ' + total;
+  const pct = total ? Math.round((answered/total)*100) : 0;
+  const fill = document.getElementById('prog-fill');
+  fill.style.width = pct + '%';
+
+  const hasBad = Object.values(itemStates).some(v => v === 'bad');
+  fill.classList.toggle('danger', hasBad);
+
+  const motorista = document.getElementById('f-motorista').value.trim();
+  const placa = document.getElementById('f-placa').value.trim();
+  const allAnswered = answered === total && total > 0;
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = !(motorista && placa && allAnswered && signed);
+
+  document.getElementById('summary-box').style.display = answered > 0 ? 'block' : 'none';
+  const ok = Object.values(itemStates).filter(v=>v==='ok').length;
+  const bad = Object.values(itemStates).filter(v=>v==='bad').length;
+  const na = Object.values(itemStates).filter(v=>v==='na').length;
+  document.getElementById('sum-ok').textContent = ok;
+  document.getElementById('sum-bad').textContent = bad;
+  document.getElementById('sum-na').textContent = na;
+  document.getElementById('sum-total').textContent = total;
+}
+
+function renderAlerts(){
+  const badItems = Object.keys(itemStates).filter(k => itemStates[k] === 'bad');
+  const area = document.getElementById('alert-area');
+  if(badItems.length === 0){ area.innerHTML = ''; return; }
+  area.innerHTML =
+    '<div class="alert-box"><i class="ti ti-alert-triangle"></i>' +
+    '<p><strong>' + badItems.length + ' item(ns) reprovado(s).</strong> O gestor será notificado ao enviar este checklist. Descreva o problema e, se possível, anexe uma foto de cada item reprovado.</p></div>';
+}
+
+function toggleCat(hd){
+  hd.closest('.cat').classList.toggle('open');
+}
+
+// ── Data/hora ──
+function setDateTime(){
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2,'0');
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const y = now.getFullYear();
+  const h = String(now.getHours()).padStart(2,'0');
+  const mi = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('f-data').value = d+'/'+m+'/'+y+' '+h+':'+mi;
+}
+
+// ── Assinatura (canvas) ──
+let signed = false;
+let drawing = false;
+let canvas, ctx;
+
+function initSign(){
+  canvas = document.getElementById('sign-canvas');
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  function pos(ev){
+    const rect = canvas.getBoundingClientRect();
+    const t = ev.touches ? ev.touches[0] : ev;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+  function start(ev){
+    drawing = true;
+    const p = pos(ev);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ev.preventDefault();
+  }
+  function move(ev){
+    if(!drawing) return;
+    const p = pos(ev);
+    ctx.lineTo(p.x, p.y);
+    ctx.strokeStyle = '#F5B800';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    if(!signed){
+      signed = true;
+      document.getElementById('sign-hint').style.display = 'none';
+      document.getElementById('sign-box').classList.add('signed');
+      updateProgress();
+    }
+    ev.preventDefault();
+  }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  canvas.addEventListener('mouseup', end);
+  canvas.addEventListener('mouseleave', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+
+  document.getElementById('sign-clear').addEventListener('click', function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    signed = false;
+    document.getElementById('sign-hint').style.display = 'block';
+    document.getElementById('sign-box').classList.remove('signed');
+    updateProgress();
+  });
+}
+
+function resizeCanvas(){
+  if(!canvas) return;
+  const box = canvas.parentElement;
+  const imgData = signed ? canvas.toDataURL() : null;
+  canvas.width = box.clientWidth;
+  canvas.height = box.clientHeight;
+  if(imgData){
+    const img = new Image();
+    img.onload = function(){ ctx.drawImage(img,0,0); };
+    img.src = imgData;
+  }
+}
+
+// ── Toast ──
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.querySelector('i').className = isErr ? 'ti ti-x' : 'ti ti-check';
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+function fileParaBase64(file){
+  return new Promise(function(resolve, reject){
+    const reader = new FileReader();
+    reader.onload = function(ev){ resolve(ev.target.result.split(',')[1]); };
+    reader.onerror = function(){ reject(new Error('Falha ao ler ' + file.name)); };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Envia as fotos pendentes pro Drive (mesmo Apps Script/pasta usado nos
+// anexos do Kanban — action "upload_anexo", uma "chave" identifica a
+// pasta). Enquanto WEBAPP_URL não estiver configurado, marca como
+// "sem envio" e segue — nada trava por causa da foto.
+async function enviarFotosPendentes(chave){
+  if(!WEBAPP_URL) return;
+  for(const nome of Object.keys(itemFotos)){
+    for(const foto of itemFotos[nome]){
+      if(foto.status === 'enviado') continue;
+      try{
+        const base64 = await fileParaBase64(foto.file);
+        const res = await fetch(WEBAPP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'upload_anexo',
+            chave: chave,
+            nome: nome + ' - ' + foto.file.name,
+            data: base64,
+            mimeType: foto.file.type || 'image/jpeg'
+          })
+        });
+        const j = await res.json();
+        foto.status = (j && j.success) ? 'enviado' : 'erro';
+        if(j && j.success && j.anexo) foto.driveId = j.anexo.id;
+      }catch(e){
+        foto.status = 'erro';
+      }
+      renderFotos(nome);
+    }
+  }
+}
+
+// ── Submit ──
+async function submitChecklist(){
+  const btn = document.getElementById('btn-submit');
+  const txt = document.getElementById('btn-submit-txt');
+  btn.disabled = true;
+  txt.innerHTML = '<span class="spinner"></span> Enviando...';
+
+  const placa = document.getElementById('f-placa').value.trim().toUpperCase();
+  const chave = 'CHK-' + placa + '-' + Date.now();
+
+  const payload = {
+    action: 'checklist_caminhao',
+    chave: chave,
+    motorista: document.getElementById('f-motorista').value.trim(),
+    placa: placa,
+    dataHora: document.getElementById('f-data').value,
+    observacaoGeral: document.getElementById('f-obs-geral').value.trim(),
+    itens: allItems.map(function(nome){
+      return {
+        item: nome,
+        status: itemStates[nome] || '',
+        obs: itemObs[nome] || '',
+        qtdFotos: (itemFotos[nome] || []).length
+      };
+    }),
+    totalReprovados: Object.values(itemStates).filter(v=>v==='bad').length,
+    assinatura: signed ? canvas.toDataURL() : ''
+  };
+
+  try{
+    if(WEBAPP_URL){
+      txt.innerHTML = '<span class="spinner"></span> Enviando fotos...';
+      await enviarFotosPendentes(chave);
+      txt.innerHTML = '<span class="spinner"></span> Enviando...';
+      await fetch(WEBAPP_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // Sem integração ainda — apenas log local
+      console.log('Checklist (sem WEBAPP_URL configurada):', payload);
+      try{ localStorage.setItem('checklist_caminhao_last', JSON.stringify(payload)); }catch(e){}
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    const badCount = payload.totalReprovados;
+    document.getElementById('success-msg').textContent = badCount > 0
+      ? badCount + ' item(ns) reprovado(s) registrados. O gestor foi notificado.'
+      : 'A inspeção foi registrada com sucesso. Bom trabalho e boa viagem!';
+    document.getElementById('success-ov').classList.add('show');
+  } catch(err){
+    showToast('Erro ao enviar. Tente novamente.', true);
+    btn.disabled = false;
+  } finally {
+    txt.textContent = 'Enviar Checklist';
+  }
+}
+
+function resetForm(){
+  document.getElementById('success-ov').classList.remove('show');
+  itemStates = {};
+  itemObs = {};
+  Object.keys(itemFotos).forEach(function(k){ itemFotos[k] = []; });
+  document.querySelectorAll('[data-seg] button').forEach(b=>b.classList.remove('ok-active','bad-active','na-active'));
+  document.querySelectorAll('.item').forEach(it=>it.classList.remove('flagged'));
+  document.querySelectorAll('.item-obs').forEach(o=>{o.classList.remove('open'); o.querySelector('textarea').value='';});
+  document.querySelectorAll('[data-obs-btn]').forEach(b=>b.classList.remove('has-text'));
+  document.querySelectorAll('[data-foto-thumbs]').forEach(function(w){ w.innerHTML=''; });
+  document.getElementById('f-motorista').value='';
+  document.getElementById('f-placa').value='';
+  document.getElementById('f-obs-geral').value='';
+  document.getElementById('alert-area').innerHTML='';
+  if(ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+  signed = false;
+  document.getElementById('sign-hint').style.display='block';
+  document.getElementById('sign-box').classList.remove('signed');
+  setDateTime();
+  updateCategoryCounts();
+  updateProgress();
+  window.scrollTo(0,0);
+}
+
+document.getElementById('btn-submit').addEventListener('click', submitChecklist);
+document.getElementById('btn-clear-all').addEventListener('click', function(){
+  if(confirm('Limpar todas as respostas do checklist?')) resetForm();
+});
+['f-motorista','f-placa'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', updateProgress);
+});
+
+setDateTime();
+buildItems();
+initSign();
+</script>
+</body>
+</html>
