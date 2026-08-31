@@ -59,6 +59,15 @@ body.tema-claro .logo-claro{display:block}
 .kpi-lbl{font-size:9.5px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.04em;margin-top:5px;font-weight:600;}
 
 /* ── TABS ── */
+.search-box{position:relative;margin-bottom:12px;}
+.search-box i.ti-search{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--txt-dim);font-size:14px;pointer-events:none;}
+.search-box input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--txt);
+  font-family:'Montserrat',sans-serif;font-size:13px;padding:11px 36px;outline:none;}
+.search-box input:focus{border-color:var(--gold);}
+.search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--txt-dim);
+  cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.search-clear:hover{color:var(--gold);}
+
 .tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;}
 .tab{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--txt-dim);
   padding:7px 14px;font-size:11.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;
@@ -183,6 +192,12 @@ body.tema-claro .logo-claro{display:block}
     <div class="kpi-tile"><div class="kpi-val" id="kpi-aberta" style="color:var(--red)">0</div><div class="kpi-lbl">Abertas</div></div>
     <div class="kpi-tile"><div class="kpi-val" id="kpi-andamento" style="color:var(--gold)">0</div><div class="kpi-lbl">Em Andamento</div></div>
     <div class="kpi-tile"><div class="kpi-val" id="kpi-concluida" style="color:var(--green)">0</div><div class="kpi-lbl">Concluídas</div></div>
+  </div>
+
+  <div class="search-box">
+    <i class="ti ti-search"></i>
+    <input type="text" id="busca-os" placeholder="Buscar por placa ou mecânico..." oninput="renderTudo()">
+    <button class="search-clear" id="busca-clear" onclick="limparBusca()" style="display:none"><i class="ti ti-x"></i></button>
   </div>
 
   <div class="tabs">
@@ -394,12 +409,23 @@ function renderTudo(){
   document.getElementById('ct-concluida').textContent = todas.filter(o=>o.status==='concluida').length;
   document.getElementById('ct-todas').textContent = todas.length;
 
-  const filtradas = (filtroAtual === 'todas' ? todas : todas.filter(o=>o.status===filtroAtual))
-    .slice().sort((a,b)=> new Date(b.dataAbertura) - new Date(a.dataAbertura));
+  const termoBusca = (document.getElementById('busca-os')?.value || '').trim().toLowerCase();
+  const buscaClear = document.getElementById('busca-clear');
+  if(buscaClear) buscaClear.style.display = termoBusca ? 'flex' : 'none';
+
+  let filtradas = filtroAtual === 'todas' ? todas : todas.filter(o=>o.status===filtroAtual);
+  if(termoBusca){
+    filtradas = filtradas.filter(o =>
+      (o.placa||'').toLowerCase().includes(termoBusca) ||
+      (o.mecanico||'').toLowerCase().includes(termoBusca)
+    );
+  }
+  filtradas = filtradas.slice().sort((a,b)=> new Date(b.dataAbertura) - new Date(a.dataAbertura));
 
   const lista = document.getElementById('lista-os');
   if(!filtradas.length){
-    lista.innerHTML = '<div class="empty-state"><i class="ti ti-clipboard-off"></i><p>Nenhuma OS '+(filtroAtual==='todas'?'registrada':'nessa situação')+' ainda.</p></div>';
+    const msg = termoBusca ? 'Nenhuma OS encontrada para "'+e(termoBusca)+'".' : 'Nenhuma OS '+(filtroAtual==='todas'?'registrada':'nessa situação')+' ainda.';
+    lista.innerHTML = '<div class="empty-state"><i class="ti ti-clipboard-off"></i><p>'+msg+'</p></div>';
     return;
   }
 
@@ -450,6 +476,11 @@ function renderTudo(){
 
 function toggleOs(hd){
   hd.closest('.os-card').classList.toggle('open');
+}
+
+function limparBusca(){
+  document.getElementById('busca-os').value = '';
+  renderTudo();
 }
 
 function filtrar(tabEl){
