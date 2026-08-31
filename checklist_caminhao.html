@@ -691,6 +691,17 @@ async function enviarFotosPendentes(chave){
   }
 }
 
+// ── Histórico de checklists preenchidos (aparece na aba Histórico
+// da tela de Manutenção OS) ──────────────────────────────────
+function salvarNoHistorico(payload){
+  var hist = [];
+  try{ hist = JSON.parse(localStorage.getItem('mf_checklists') || '[]'); }catch(e){ hist = []; }
+  hist.push(payload);
+  try{ localStorage.setItem('mf_checklists', JSON.stringify(hist)); }catch(e){}
+  // Mantém compatibilidade com quem já lia só o último
+  try{ localStorage.setItem('checklist_caminhao_last', JSON.stringify(payload)); }catch(e){}
+}
+
 // ── OS automáticas a partir dos itens reprovados ──────────────
 // Banco local (localStorage) compartilhado com manutencao_os.html —
 // é a ponte enquanto o Supabase ainda não está plugado. Mesma origem
@@ -749,6 +760,7 @@ async function submitChecklist(){
   };
 
   criarOsDosReprovados(payload);
+  salvarNoHistorico(payload);
 
   try{
     if(WEBAPP_URL){
@@ -760,9 +772,9 @@ async function submitChecklist(){
         body: JSON.stringify(payload)
       });
     } else {
-      // Sem integração ainda — apenas log local
+      // Sem integração ainda — apenas log local (o histórico já foi
+      // salvo acima, em salvarNoHistorico)
       console.log('Checklist (sem WEBAPP_URL configurada):', payload);
-      try{ localStorage.setItem('checklist_caminhao_last', JSON.stringify(payload)); }catch(e){}
       await new Promise(r => setTimeout(r, 600));
     }
 
