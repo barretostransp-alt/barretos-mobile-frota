@@ -55,10 +55,35 @@ body.sidebar-open #overlay{display:block;}
 .tb-title{font-size:13px;color:var(--txt);font-weight:700;margin-left:4px;}
 
 #content-frame{flex:1;width:100%;border:none;background:var(--bg);}
+
+#login-overlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.login-box{width:100%;max-width:340px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;}
+.login-logo{margin-bottom:16px;text-align:center;}
+.login-logo img{height:48px;width:auto;}
+.login-sub{font-size:12px;color:var(--txt-dim);margin-bottom:22px;text-align:center;}
+.login-field{margin-bottom:13px;}
+.login-field label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--txt-dim);margin-bottom:5px;}
+.login-field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--txt);font-family:'Montserrat',sans-serif;font-size:13.5px;outline:none;}
+.login-field input:focus{border-color:var(--gold);}
+.login-btn{width:100%;margin-top:6px;padding:11px;background:var(--gold);color:#111;border:none;border-radius:8px;font-weight:700;font-size:13px;font-family:'Montserrat',sans-serif;cursor:pointer;}
+.login-btn:disabled{opacity:.5;cursor:not-allowed;}
+.login-err{color:var(--red);font-size:11.5px;margin-top:10px;min-height:14px;text-align:center;}
 </style>
 </head>
 <body>
 
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo"><img id="login-logo-img" src="" alt="Barreto's Transportes"></div>
+    <div class="login-sub">Mobile Frota — acesso do motorista</div>
+    <div class="login-field"><label>Usuário</label><input id="lg-login" type="text" autocomplete="username"></div>
+    <div class="login-field"><label>Senha</label><input id="lg-senha" type="password" autocomplete="current-password"></div>
+    <button class="login-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
+    <div class="login-err" id="lg-err"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
 <div id="overlay" onclick="fecharMenu()"></div>
 
 <aside id="sidebar">
@@ -84,7 +109,8 @@ body.sidebar-open #overlay{display:block;}
     <div class="btn-menu" onclick="abrirMenu()"><i class="ti ti-menu-2"></i></div>
     <span class="tb-title" id="tb-title">Checklist Pré-Viagem</span>
   </div>
-  <iframe id="content-frame" src="checklist_caminhao.html"></iframe>
+  <iframe id="content-frame" src=""></iframe>
+</div>
 </div>
 
 <script>
@@ -116,7 +142,80 @@ function alternarTema(){
   aplicarTema(atual);
 }
 
+// ── Autenticação (Supabase Auth) — mesmo padrão da Torre de Controle:
+// login/senha vira token, guardado no localStorage (mesma origem que os
+// arquivos do iframe, então eles leem o mesmo token direto, sem precisar
+// de postMessage) ──
+var SUPABASE_URL      = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+function loginParaEmail(login){
+  if(login.indexOf('@')!==-1) return login;
+  var normalizado = login.toLowerCase().trim()
+    .normalize('NFD').replace(/\p{M}/gu,'')
+    .replace(/\s+/g,'.').replace(/[^a-z0-9.]/g,'');
+  return normalizado + '@barretos.sistema';
+}
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function fazerLogin(){
+  var login = document.getElementById('lg-login').value.trim();
+  var senha = document.getElementById('lg-senha').value;
+  var erroEl = document.getElementById('lg-err');
+  var btn = document.getElementById('btn-login');
+  erroEl.textContent = '';
+  if(!login || !senha){ erroEl.textContent = 'Preencha usuário e senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ email: loginParaEmail(login), password: senha }),
+    });
+    var j = await r.json();
+    if(!r.ok || !j.access_token){
+      erroEl.textContent = 'Usuário ou senha inválidos.';
+      btn.disabled = false; btn.textContent = 'Entrar';
+      return;
+    }
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    iniciarApp();
+  }catch(e){
+    erroEl.textContent = 'Erro de conexão. Tente novamente.';
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+}
+
+function iniciarApp(){
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
+  document.getElementById('content-frame').src = 'checklist_caminhao.html';
+}
+
 aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
+// Mostra a logo certa (clara/escura) já na tela de login também
+document.getElementById('login-logo-img').src = document.querySelector('.sb-logo img').src;
+
+// Se já tem token salvo (sessão anterior), pula a tela de login direto
+if (getAuthToken()) { iniciarApp(); }
 
 // Garante que a página recém-carregada no iframe também reflita o tema
 // atual (ela já se auto-aplica sozinha, isso é só reforço pra evitar

@@ -371,9 +371,50 @@ body.tema-claro .logo-claro{display:block}
 <script>
 // ── Config ── Apps Script + Drive (mesmo padrão dos anexos do Kanban) —
 // preencher com o Web App da Frota assim que ele existir. Enquanto estiver
-// vazio, o envio final e as fotos ficam só em log local (nada se perde,
-// mas nada vai pro Drive de verdade ainda).
+// vazio, as fotos ficam sem enviar (o checklist em si já vai pro Supabase
+// normalmente).
 const WEBAPP_URL = ""; // ex: "https://script.google.com/macros/s/AKfycb.../exec"
+const API_BASE = 'https://barretos-backend.onrender.com/api';
+const SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+// Acessado direto (sem passar pelo menu/login do shell) — manda pra tela
+// de login em vez de deixar a tela quebrada tentando chamar a API sem token.
+if (!localStorage.getItem('mf_auth_token')) {
+  location.href = 'index.html';
+}
+
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function apiFetch(url, options){
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if(res.status === 401){
+    if(await tentarRenovarToken()){
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+  }
+  return res;
+}
 
 let itemStates = {}; // { "nome do item": "ok"|"bad"|"na" }
 let itemObs = {};    // { "nome do item": "texto observação" }
@@ -691,46 +732,8 @@ async function enviarFotosPendentes(chave){
   }
 }
 
-// ── Histórico de checklists preenchidos (aparece na aba Histórico
-// da tela de Manutenção OS) ──────────────────────────────────
-function salvarNoHistorico(payload){
-  var hist = [];
-  try{ hist = JSON.parse(localStorage.getItem('mf_checklists') || '[]'); }catch(e){ hist = []; }
-  hist.push(payload);
-  try{ localStorage.setItem('mf_checklists', JSON.stringify(hist)); }catch(e){}
-  // Mantém compatibilidade com quem já lia só o último
-  try{ localStorage.setItem('checklist_caminhao_last', JSON.stringify(payload)); }catch(e){}
-}
-
-// ── OS automáticas a partir dos itens reprovados ──────────────
-// Banco local (localStorage) compartilhado com manutencao_os.html —
-// é a ponte enquanto o Supabase ainda não está plugado. Mesma origem
-// (frota.btworkspaceapp.com.br), então as duas páginas enxergam os
-// mesmos dados.
-function criarOsDosReprovados(payload){
-  var os = [];
-  try{ os = JSON.parse(localStorage.getItem('mf_os') || '[]'); }catch(e){ os = []; }
-  var agora = new Date().toISOString();
-  payload.itens.forEach(function(it, idx){
-    if(it.status !== 'bad') return;
-    os.push({
-      id: 'OS-' + Date.now() + '-' + idx,
-      checklistChave: payload.chave,
-      placa: payload.placa,
-      motorista: payload.motorista,
-      item: it.item,
-      problema: it.obs || '',
-      qtdFotos: it.qtdFotos || 0,
-      dataAbertura: agora,
-      status: 'aberta',
-      mecanico: '',
-      notas: []
-    });
-  });
-  try{ localStorage.setItem('mf_os', JSON.stringify(os)); }catch(e){}
-}
-
-// ── Submit ──
+// ── Submit — grava direto no Supabase (checklist + OS dos itens
+// reprovados são criados numa tacada só pelo backend) ──────────
 async function submitChecklist(){
   const btn = document.getElementById('btn-submit');
   const txt = document.getElementById('btn-submit-txt');
@@ -738,14 +741,10 @@ async function submitChecklist(){
   txt.innerHTML = '<span class="spinner"></span> Enviando...';
 
   const placa = document.getElementById('f-placa').value.trim().toUpperCase();
-  const chave = 'CHK-' + placa + '-' + Date.now();
 
   const payload = {
-    action: 'checklist_caminhao',
-    chave: chave,
     motorista: document.getElementById('f-motorista').value.trim(),
     placa: placa,
-    dataHora: document.getElementById('f-data').value,
     observacaoGeral: document.getElementById('f-obs-geral').value.trim(),
     itens: allItems.map(function(nome){
       return {
@@ -755,36 +754,30 @@ async function submitChecklist(){
         qtdFotos: (itemFotos[nome] || []).length
       };
     }),
-    totalReprovados: Object.values(itemStates).filter(v=>v==='bad').length,
     assinatura: signed ? canvas.toDataURL() : ''
   };
-
-  criarOsDosReprovados(payload);
-  salvarNoHistorico(payload);
+  const totalReprovados = payload.itens.filter(it => it.status === 'bad').length;
 
   try{
-    if(WEBAPP_URL){
+    const res = await apiFetch(API_BASE + '/frota-os/checklists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json().catch(function(){ return {}; });
+    if(!res.ok) throw new Error(j.error || 'Falha ao enviar checklist');
+
+    if(WEBAPP_URL && j.checklist){
       txt.innerHTML = '<span class="spinner"></span> Enviando fotos...';
-      await enviarFotosPendentes(chave);
-      txt.innerHTML = '<span class="spinner"></span> Enviando...';
-      await fetch(WEBAPP_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // Sem integração ainda — apenas log local (o histórico já foi
-      // salvo acima, em salvarNoHistorico)
-      console.log('Checklist (sem WEBAPP_URL configurada):', payload);
-      await new Promise(r => setTimeout(r, 600));
+      await enviarFotosPendentes(j.checklist.id);
     }
 
-    const badCount = payload.totalReprovados;
-    document.getElementById('success-msg').textContent = badCount > 0
-      ? badCount + ' item(ns) reprovado(s) registrados. O gestor foi notificado.'
+    document.getElementById('success-msg').textContent = totalReprovados > 0
+      ? totalReprovados + ' item(ns) reprovado(s) registrados. O gestor foi notificado.'
       : 'A inspeção foi registrada com sucesso. Bom trabalho e boa viagem!';
     document.getElementById('success-ov').classList.add('show');
   } catch(err){
-    showToast('Erro ao enviar. Tente novamente.', true);
+    showToast('Erro ao enviar: ' + (err.message||'tente novamente') , true);
     btn.disabled = false;
   } finally {
     txt.textContent = 'Enviar Checklist';

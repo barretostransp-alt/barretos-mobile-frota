@@ -248,28 +248,95 @@ body.tema-claro .logo-claro{display:block}
 <div class="toast" id="toast"><i class="ti ti-check"></i><span id="toast-msg"></span></div>
 
 <script>
-// ── Banco local (localStorage) — mesma chave "mf_os" usada pelo
-// checklist_caminhao.html pra criar OS automaticamente a partir dos
-// itens reprovados. Ponte enquanto o Supabase não está plugado; troca
-// só as funções carregarOs()/salvarOs() por chamadas de API quando a
-// tabela existir, sem mexer no resto da tela.
-function carregarOs(){
-  try{ return JSON.parse(localStorage.getItem('mf_os') || '[]'); }catch(e){ return []; }
+// ── Config + autenticação (mesmo padrão do checklist_caminhao.html) ──
+const API_BASE = 'https://barretos-backend.onrender.com/api';
+const SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+if (!localStorage.getItem('mf_auth_token')) {
+  location.href = 'index.html';
 }
-function salvarOs(lista){
-  try{ localStorage.setItem('mf_os', JSON.stringify(lista)); }catch(e){}
+
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
 }
+
+async function apiFetch(url, options){
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if(res.status === 401){
+    if(await tentarRenovarToken()){
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+  }
+  return res;
+}
+
+// ── Dados vêm do Supabase agora — cache em memória alimentado por
+// recarregarOs()/recarregarHistorico(); o resto da tela (renderTudo,
+// renderHistorico etc.) continua lendo por carregarOs()/
+// carregarHistoricoChecklists() como antes, só que agora é o cache. ──
+function mapOsDoApi_(o){
+  return {
+    id: o.id, checklistChave: o.checklist_id, placa: o.placa, motorista: o.motorista,
+    item: o.item, problema: o.problema, qtdFotos: o.qtd_fotos,
+    dataAbertura: o.data_abertura, status: o.status, mecanico: o.mecanico,
+    notas: o.notas || []
+  };
+}
+function mapChecklistDoApi_(c){
+  return {
+    id: c.id, motorista: c.motorista, placa: c.placa,
+    dataHora: fmtData(c.data_hora), dataHoraIso: c.data_hora,
+    observacaoGeral: c.observacao_geral, itens: c.itens || [],
+    totalReprovados: c.total_reprovados
+  };
+}
+
+let osCache = [];
+let checklistsCache = [];
+
+async function recarregarOs(){
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os');
+    if(res.ok) osCache = (await res.json()).map(mapOsDoApi_);
+  }catch(e){}
+  renderTudo();
+}
+async function recarregarHistorico(){
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os/checklists');
+    if(res.ok) checklistsCache = (await res.json()).map(mapChecklistDoApi_);
+  }catch(e){}
+}
+
+function carregarOs(){ return osCache; }
+function carregarHistoricoChecklists(){ return checklistsCache; }
 
 let filtroAtual = 'aberta';
 
 // ── Histórico de checklists (painel lateral) ──────────────────────
-function carregarHistoricoChecklists(){
-  try{ return JSON.parse(localStorage.getItem('mf_checklists') || '[]'); }catch(e){ return []; }
-}
-
-function abrirHistorico(){
-  renderHistorico();
+async function abrirHistorico(){
   document.getElementById('hist-ov').classList.add('show');
+  await recarregarHistorico();
+  renderHistorico();
 }
 function fecharHistorico(){
   document.getElementById('hist-ov').classList.remove('show');
@@ -283,14 +350,10 @@ function iconeStatus(s){
 }
 
 function renderHistorico(){
-  const hist = carregarHistoricoChecklists().slice().sort((a,b) => {
-    const da = new Date((a.dataHora||'').split(' ').reverse().join(' ').split('/').reverse().join('-'));
-    return (b._ts||0) - (a._ts||0);
-  });
+  const hist = carregarHistoricoChecklists().slice().sort((a,b) => new Date(b.dataHoraIso) - new Date(a.dataHoraIso));
   const lista = document.getElementById('hist-list');
   if(!hist.length){
-    lista.innerHTML = '<div class="empty-state" style="padding:30px 10px"><i class="ti ti-history"></i><p>Nenhum checklist enviado ainda.</p>' +
-      '<button class="hist-seed" onclick="carregarExemplos()"><i class="ti ti-flask"></i> Carregar 2 exemplos (1 OK, 1 com problema)</button></div>';
+    lista.innerHTML = '<div class="empty-state" style="padding:30px 10px"><i class="ti ti-history"></i><p>Nenhum checklist enviado ainda.</p></div>';
     return;
   }
   lista.innerHTML = hist.map(function(c, idx){
@@ -313,77 +376,9 @@ function renderHistorico(){
         itensHtml +
       '</div>' +
     '</div>';
-  }).join('') + '<button class="hist-seed" onclick="carregarExemplos()"><i class="ti ti-flask"></i> Carregar mais 2 exemplos</button>';
+  }).join('');
 }
 
-// ── Dados de exemplo — pra visualizar a propagação sem preencher o
-// checklist manualmente 27 vezes. Gera 1 checklist 100% OK e 1 com
-// problemas (que também cria as OS correspondentes).
-function carregarExemplos(){
-  var ITENS = [
-    'Calibragem de todos os pneus', 'Desgaste e cortes na banda de rodagem', 'Estepe presente e calibrado',
-    'Parafusos e porcas das rodas firmes', 'Freio de serviço (pedal) responde bem', 'Freio de estacionamento funciona',
-    'Sem ruído anormal na suspensão', 'Quinta roda travada e lubrificada', 'Nível de óleo do motor',
-    'Água do radiador / arrefecimento', 'Fluido de freio', 'Sem vazamentos visíveis embaixo do veículo',
-    'Nível de combustível suficiente para a rota', 'Faróis baixo / alto funcionando', 'Lanternas, setas e luz de ré',
-    'Luz de freio funcionando', 'Bateria sem sinais de oxidação', 'Painel sem luzes de advertência acesas',
-    'Para-brisa sem trincas que atrapalhem visão', 'Palhetas do limpador em bom estado', 'Retrovisores ajustados e íntegros',
-    'Cinto de segurança funcionando', 'Buzina funcionando', 'Triângulo de sinalização',
-    'Extintor de incêndio (carga e validade)', 'Macaco e chave de roda', 'Kit de primeiros socorros'
-  ];
-
-  function fmtAgora(offsetMin){
-    var d = new Date(Date.now() - (offsetMin||0)*60000);
-    var pad = n => String(n).padStart(2,'0');
-    return { iso: d.toISOString(), br: pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes()) };
-  }
-
-  // Exemplo 1 — tudo OK
-  var t1 = fmtAgora(50);
-  var placa1 = 'OK1A234';
-  var payloadOk = {
-    action: 'checklist_caminhao', chave: 'CHK-' + placa1 + '-' + Date.now(),
-    motorista: 'Exemplo — José Motorista', placa: placa1, dataHora: t1.br, observacaoGeral: '',
-    itens: ITENS.map(nome => ({ item: nome, status: 'ok', obs: '', qtdFotos: 0 })),
-    totalReprovados: 0, assinatura: '', _ts: Date.now() - 50*60000
-  };
-
-  // Exemplo 2 — com 2 problemas
-  var t2 = fmtAgora(5);
-  var placa2 = 'BAD5K678';
-  var itensBad = ITENS.map(nome => ({ item: nome, status: 'ok', obs: '', qtdFotos: 0 }));
-  itensBad[0] = { item: ITENS[0], status: 'bad', obs: 'Pneu dianteiro esquerdo com desgaste excessivo e uma bolha lateral visível.', qtdFotos: 1 };
-  itensBad[16] = { item: ITENS[16], status: 'bad', obs: 'Bateria com terminais oxidados, dificultando a partida pela manhã.', qtdFotos: 0 };
-  var payloadBad = {
-    action: 'checklist_caminhao', chave: 'CHK-' + placa2 + '-' + (Date.now()+1),
-    motorista: 'Exemplo — Maria Motorista', placa: placa2, dataHora: t2.br,
-    observacaoGeral: 'Veículo com ruído leve na suspensão dianteira, mas dirigível.',
-    itens: itensBad, totalReprovados: 2, assinatura: '', _ts: Date.now() - 5*60000
-  };
-
-  var hist = carregarHistoricoChecklists();
-  hist.push(payloadOk, payloadBad);
-  localStorage.setItem('mf_checklists', JSON.stringify(hist));
-
-  var os = [];
-  try{ os = JSON.parse(localStorage.getItem('mf_os') || '[]'); }catch(e){ os = []; }
-  [
-    { pl: payloadBad, it: itensBad[0], idx: 0 },
-    { pl: payloadBad, it: itensBad[16], idx: 16 },
-  ].forEach(function(x){
-    os.push({
-      id: 'OS-' + Date.now() + '-' + x.idx + '-' + Math.random().toString(36).slice(2,6),
-      checklistChave: x.pl.chave, placa: x.pl.placa, motorista: x.pl.motorista,
-      item: x.it.item, problema: x.it.obs, qtdFotos: x.it.qtdFotos || 0,
-      dataAbertura: t2.iso, status: 'aberta', mecanico: '', notas: []
-    });
-  });
-  localStorage.setItem('mf_os', JSON.stringify(os));
-
-  fecharHistorico();
-  renderTudo();
-  showToast('2 checklists de exemplo carregados!');
-}
 
 
 function e(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -490,37 +485,40 @@ function filtrar(tabEl){
   renderTudo();
 }
 
-function mudarStatus(ev, id, novoStatus){
+async function mudarStatus(ev, id, novoStatus){
   ev.stopPropagation();
-  const lista = carregarOs();
-  const os = lista.find(o=>o.id===id);
-  if(!os) return;
-  os.status = novoStatus;
-  if(novoStatus === 'concluida') os.dataConclusao = new Date().toISOString();
-  salvarOs(lista);
-  renderTudo();
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os/' + id + '/status', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: novoStatus })
+    });
+    if(!res.ok) throw new Error();
+  }catch(e){ showToast('Erro ao atualizar status.', true); return; }
+  await recarregarOs();
   showToast(novoStatus === 'concluida' ? 'OS concluída!' : 'Status atualizado.');
 }
 
-function atualizarMecanico(id, valor){
-  const lista = carregarOs();
-  const os = lista.find(o=>o.id===id);
-  if(!os) return;
-  os.mecanico = valor.trim();
-  salvarOs(lista);
+async function atualizarMecanico(id, valor){
+  try{
+    await apiFetch(API_BASE + '/frota-os/' + id + '/mecanico', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mecanico: valor.trim() })
+    });
+  }catch(e){ showToast('Erro ao salvar mecânico.', true); }
 }
 
-function adicionarNota(id, inputEl){
+async function adicionarNota(id, inputEl){
   const texto = inputEl.value.trim();
   if(!texto) return;
-  const lista = carregarOs();
-  const os = lista.find(o=>o.id===id);
-  if(!os) return;
-  if(!os.notas) os.notas = [];
-  os.notas.push({ texto: texto, data: new Date().toISOString() });
-  salvarOs(lista);
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os/' + id + '/notas', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto: texto })
+    });
+    if(!res.ok) throw new Error();
+  }catch(e){ showToast('Erro ao adicionar observação.', true); return; }
   inputEl.value = '';
-  renderTudo();
+  await recarregarOs();
   // Reabre o card que estava aberto, já que renderTudo() reconstrói tudo
   const card = document.querySelector('.os-card[data-id="'+id+'"]');
   if(card) card.classList.add('open');
@@ -536,28 +534,20 @@ function abrirModalNovaOs(){
 function fecharModalNovaOs(){
   document.getElementById('modal-nova-os').classList.remove('show');
 }
-function salvarNovaOs(){
+async function salvarNovaOs(){
   const placa = document.getElementById('nos-placa').value.trim().toUpperCase();
   const motorista = document.getElementById('nos-motorista').value.trim();
   const problema = document.getElementById('nos-problema').value.trim();
   if(!placa || !problema){ showToast('Preencha placa e o problema.', true); return; }
-  const lista = carregarOs();
-  lista.push({
-    id: 'OS-' + Date.now(),
-    checklistChave: null,
-    placa: placa,
-    motorista: motorista,
-    item: 'OS manual',
-    problema: problema,
-    qtdFotos: 0,
-    dataAbertura: new Date().toISOString(),
-    status: 'aberta',
-    mecanico: '',
-    notas: []
-  });
-  salvarOs(lista);
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placa: placa, motorista: motorista, problema: problema })
+    });
+    if(!res.ok) throw new Error();
+  }catch(e){ showToast('Erro ao criar OS.', true); return; }
   fecharModalNovaOs();
-  renderTudo();
+  await recarregarOs();
   showToast('OS criada com sucesso!');
 }
 
@@ -582,7 +572,7 @@ function alternarTema(){
 }
 
 aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
-renderTudo();
+recarregarOs();
 </script>
 </body>
 </html>
