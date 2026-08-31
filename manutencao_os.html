@@ -87,6 +87,10 @@ body.tema-claro .logo-claro{display:block}
 .os-badge.aberta{background:rgba(239,68,68,.14);color:var(--red);}
 .os-badge.em_andamento{background:rgba(245,184,0,.14);color:var(--gold);}
 .os-badge.concluida{background:rgba(34,197,94,.14);color:var(--green);}
+.os-prio{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:20px;flex-shrink:0;white-space:nowrap;}
+.os-prio.baixa{background:rgba(34,197,94,.14);color:var(--green);}
+.os-prio.media{background:rgba(245,184,0,.14);color:var(--gold);}
+.os-prio.alta{background:rgba(239,68,68,.14);color:var(--red);}
 .os-chev{color:var(--txt-dim);font-size:14px;transition:transform .2s;flex-shrink:0;margin-top:2px;}
 .os-card.open .os-chev{transform:rotate(180deg);}
 .os-body{display:none;padding:0 14px 14px;border-top:1px solid var(--border);}
@@ -230,6 +234,14 @@ body.tema-claro .logo-claro{display:block}
       <label>Problema / Serviço *</label>
       <textarea id="nos-problema" rows="3" placeholder="Descreva o que precisa ser feito..."></textarea>
     </div>
+    <div class="os-field">
+      <label>Prioridade</label>
+      <select id="nos-prioridade">
+        <option value="baixa">Baixa</option>
+        <option value="media" selected>Média</option>
+        <option value="alta">Alta</option>
+      </select>
+    </div>
     <button class="bprim" style="width:100%" onclick="salvarNovaOs()"><i class="ti ti-check"></i> Criar OS</button>
   </div>
 </div>
@@ -298,7 +310,7 @@ function mapOsDoApi_(o){
     id: o.id, checklistChave: o.checklist_id, placa: o.placa, motorista: o.motorista,
     item: o.item, problema: o.problema, qtdFotos: o.qtd_fotos,
     dataAbertura: o.data_abertura, status: o.status, mecanico: o.mecanico,
-    notas: o.notas || []
+    notas: o.notas || [], prioridade: o.prioridade || 'media'
   };
 }
 function mapChecklistDoApi_(c){
@@ -393,6 +405,9 @@ function fmtData(iso){
 function labelStatus(s){
   return s === 'aberta' ? 'Aberta' : s === 'em_andamento' ? 'Em Andamento' : 'Concluída';
 }
+function labelPrioridade(p){
+  return p === 'baixa' ? 'Baixa' : p === 'alta' ? 'Alta' : 'Média';
+}
 
 function renderTudo(){
   const todas = carregarOs();
@@ -447,12 +462,21 @@ function renderTudo(){
           '<div class="os-item">'+e(os.item)+'</div>'+
           '<div class="os-meta">'+(os.motorista?e(os.motorista)+' · ':'')+fmtData(os.dataAbertura)+(os.checklistChave?' · via checklist':' · manual')+'</div>'+
         '</div>'+
+        '<div class="os-prio '+(os.prioridade||'media')+'">'+labelPrioridade(os.prioridade)+'</div>'+
         '<div class="os-badge '+os.status+'">'+labelStatus(os.status)+'</div>'+
         '<i class="ti ti-chevron-down os-chev"></i>'+
       '</div>'+
       '<div class="os-body">'+
         (os.problema ? '<div class="os-problema">'+e(os.problema)+'</div>' : '') +
         (os.qtdFotos ? '<div class="os-fotos-info"><i class="ti ti-camera"></i> '+os.qtdFotos+' foto(s) anexada(s) no checklist</div>' : '') +
+        '<div class="os-field">'+
+          '<label>Prioridade</label>'+
+          '<select onclick="event.stopPropagation()" onchange="atualizarPrioridade(\''+os.id+'\', this.value)">'+
+            '<option value="baixa"'+(os.prioridade==='baixa'?' selected':'')+'>Baixa</option>'+
+            '<option value="media"'+(!os.prioridade||os.prioridade==='media'?' selected':'')+'>Média</option>'+
+            '<option value="alta"'+(os.prioridade==='alta'?' selected':'')+'>Alta</option>'+
+          '</select>'+
+        '</div>'+
         '<div class="os-field">'+
           '<label>Mecânico responsável</label>'+
           '<input type="text" value="'+e(os.mecanico||'')+'" placeholder="Nome do mecânico" onchange="atualizarMecanico(\''+os.id+'\', this.value)">'+
@@ -529,6 +553,7 @@ function abrirModalNovaOs(){
   document.getElementById('nos-placa').value = '';
   document.getElementById('nos-motorista').value = '';
   document.getElementById('nos-problema').value = '';
+  document.getElementById('nos-prioridade').value = 'media';
   document.getElementById('modal-nova-os').classList.add('show');
 }
 function fecharModalNovaOs(){
@@ -538,17 +563,29 @@ async function salvarNovaOs(){
   const placa = document.getElementById('nos-placa').value.trim().toUpperCase();
   const motorista = document.getElementById('nos-motorista').value.trim();
   const problema = document.getElementById('nos-problema').value.trim();
+  const prioridade = document.getElementById('nos-prioridade').value;
   if(!placa || !problema){ showToast('Preencha placa e o problema.', true); return; }
   try{
     const res = await apiFetch(API_BASE + '/frota-os', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ placa: placa, motorista: motorista, problema: problema })
+      body: JSON.stringify({ placa: placa, motorista: motorista, problema: problema, prioridade: prioridade })
     });
     if(!res.ok) throw new Error();
   }catch(e){ showToast('Erro ao criar OS.', true); return; }
   fecharModalNovaOs();
   await recarregarOs();
   showToast('OS criada com sucesso!');
+}
+
+async function atualizarPrioridade(id, prioridade){
+  try{
+    const res = await apiFetch(API_BASE + '/frota-os/' + id + '/prioridade', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prioridade: prioridade })
+    });
+    if(!res.ok) throw new Error();
+    const os = osCache.find(o => o.id === id); if(os) os.prioridade = prioridade;
+  }catch(e){ showToast('Erro ao alterar prioridade.', true); }
 }
 
 function showToast(msg, isErr){
