@@ -13,6 +13,7 @@
 :root{
   --bg:#111318;
   --card:#1A1D26;
+  --input-bg:#111318;
   --border:#2A2D3A;
   --gold:#F5B800;
   --gold-dim:rgba(245,184,0,.12);
@@ -22,7 +23,22 @@
   --txt-dim:#888;
   --radius:14px;
 }
-html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif}
+/* Tema claro — mesmo padrão do resto do Mobile Frota (checklist_caminhao.html),
+   aplicado tanto pelo toggle do menu (index.html, dentro do iframe) quanto
+   sozinho aqui se a página for aberta direto (sem passar pelo shell). */
+body.tema-claro{
+  --bg:#F0F2F5;
+  --card:#FFFFFF;
+  --input-bg:#F3F4F6;
+  --border:#E2E6ED;
+  --gold:#D97706;
+  --gold-dim:rgba(217,119,6,.10);
+  --green:#059669;
+  --red:#DC2626;
+  --txt:#111827;
+  --txt-dim:#6B7280;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif;transition:background .15s,color .15s}
 
 /* ── HEADER ── */
 .header{
@@ -61,7 +77,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 .field input,
 .field select,
 .field textarea{
-  width:100%;background:#111318;border:1.5px solid var(--border);
+  width:100%;background:var(--input-bg);border:1.5px solid var(--border);
   border-radius:10px;padding:12px 14px;color:var(--txt);
   font-family:'DM Sans',sans-serif;font-size:15px;
   transition:border-color .15s;outline:none;
@@ -235,6 +251,15 @@ async function apiFetch(url, options){
   return res;
 }
 
+// ── Tema claro/escuro (persistido, mesmo padrão do resto do Mobile
+// Frota) — o toggle em si mora no menu (index.html), que aplica a classe
+// direto no documento do iframe; isso aqui só garante que a preferência
+// já salva é respeitada mesmo se essa página for aberta sozinha.
+function aplicarTema(t){
+  document.body.classList.toggle('tema-claro', t === 'claro');
+}
+aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
+
 // ── INIT ────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function() {
   // Data default: hoje
@@ -265,7 +290,7 @@ function carregarMotoristas() {
     })
     .catch(function() {
       document.getElementById('loading-screen').innerHTML =
-        '<div style="color:#E24B4A;font-size:13px;text-align:center"><i class="ti ti-wifi-off"></i><br>Sem conexão.<br><button onclick="carregarMotoristas()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid #E24B4A;background:transparent;color:#E24B4A;cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
+        '<div style="color:var(--red);font-size:13px;text-align:center"><i class="ti ti-wifi-off"></i><br>Sem conexão.<br><button onclick="carregarMotoristas()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
     });
 }
 
