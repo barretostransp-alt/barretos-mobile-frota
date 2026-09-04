@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>Registro de Diária — Barreto's</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#111318;
+  --card:#1A1D26;
+  --border:#2A2D3A;
+  --gold:#F5B800;
+  --gold-dim:rgba(245,184,0,.12);
+  --green:#2EBD85;
+  --red:#E24B4A;
+  --txt:#E8E9F0;
+  --txt-dim:#888;
+  --radius:14px;
+}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif}
+
+/* ── HEADER ── */
+.header{
+  background:var(--card);
+  border-bottom:1px solid var(--border);
+  padding:14px 20px;
+  display:flex;align-items:center;gap:12px;
+}
+.header-logo{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--gold);display:flex;align-items:center;justify-content:center;
+}
+.header-logo i{font-size:18px;color:#111}
+.header-title{font-size:15px;font-weight:700}
+.header-sub{font-size:11px;color:var(--txt-dim);margin-top:1px}
+
+/* ── MAIN ── */
+.main{padding:20px 16px;max-width:480px;margin:0 auto}
+
+/* ── CARD ── */
+.form-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:20px;margin-bottom:16px;
+}
+.form-card-title{
+  font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--gold);display:flex;align-items:center;gap:8px;margin-bottom:16px;
+}
+
+/* ── CAMPOS ── */
+.field{margin-bottom:14px}
+.field label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--txt-dim);margin-bottom:6px;
+}
+.field input,
+.field select,
+.field textarea{
+  width:100%;background:#111318;border:1.5px solid var(--border);
+  border-radius:10px;padding:12px 14px;color:var(--txt);
+  font-family:'DM Sans',sans-serif;font-size:15px;
+  transition:border-color .15s;outline:none;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus{border-color:var(--gold);}
+.field select{cursor:pointer;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.field textarea{resize:none;min-height:90px}
+
+/* ── BOTÃO ── */
+.btn-submit{
+  width:100%;padding:15px;border-radius:12px;border:none;
+  background:var(--gold);color:#111;font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:opacity .15s,transform .1s;
+}
+.btn-submit:active{transform:scale(.98);opacity:.9}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── ESTADOS ── */
+.spinner{
+  width:18px;height:18px;border:2.5px solid rgba(17,17,17,.3);
+  border-top-color:#111;border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SUCESSO ── */
+.success-screen{
+  display:none;text-align:center;padding:40px 20px;
+}
+.success-screen.visible{display:block}
+.success-icon{
+  width:72px;height:72px;border-radius:50%;background:rgba(46,189,133,.15);
+  border:2px solid var(--green);display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;
+}
+.success-icon i{font-size:32px;color:var(--green)}
+.success-title{font-size:20px;font-weight:700;margin-bottom:8px}
+.success-sub{font-size:13px;color:var(--txt-dim);line-height:1.6;margin-bottom:24px}
+.btn-novo{
+  padding:12px 28px;border-radius:10px;border:1px solid var(--border);
+  background:transparent;color:var(--txt);font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+}
+
+/* ── ERRO ── */
+.error-msg{
+  background:rgba(226,75,74,.1);border:1px solid rgba(226,75,74,.3);
+  border-radius:8px;padding:10px 12px;font-size:12px;color:var(--red);
+  margin-top:8px;display:none;align-items:center;gap:8px;
+}
+.error-msg.visible{display:flex}
+
+/* ── LOADING MOTORISTAS ── */
+.loading-mot{
+  text-align:center;padding:40px 20px;color:var(--txt-dim);font-size:13px;
+}
+
+/* ── DATA DEFAULT: hoje ── */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><i class="ti ti-steering-wheel"></i></div>
+  <div>
+    <div class="header-title">Registro de Diária</div>
+    <div class="header-sub">Barreto's Transportes</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Tela de loading -->
+  <div id="loading-screen" class="loading-mot">
+    <div class="spinner" style="margin:0 auto 12px;border-color:rgba(245,184,0,.2);border-top-color:var(--gold)"></div>
+    Carregando…
+  </div>
+
+  <!-- Formulário -->
+  <div id="form-screen" style="display:none">
+    <div class="form-card">
+      <div class="form-card-title"><i class="ti ti-calendar-plus"></i> Nova Diária</div>
+
+      <div class="field">
+        <label>Data *</label>
+        <input type="date" id="f-data" required>
+      </div>
+
+      <div class="field">
+        <label>Motorista *</label>
+        <select id="f-motorista" required>
+          <option value="">— selecione —</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Observação</label>
+        <textarea id="f-obs" placeholder="Descreva a atividade do dia (opcional)…"></textarea>
+      </div>
+
+      <div class="error-msg" id="error-msg">
+        <i class="ti ti-alert-circle" style="font-size:15px;flex-shrink:0"></i>
+        <span id="error-txt">Erro</span>
+      </div>
+    </div>
+
+    <button class="btn-submit" id="btn-enviar" onclick="enviar()">
+      <i class="ti ti-send"></i> Registrar Diária
+    </button>
+  </div>
+
+  <!-- Sucesso -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-icon"><i class="ti ti-check"></i></div>
+    <div class="success-title">Diária Registrada!</div>
+    <div class="success-sub" id="success-detail"></div>
+    <button class="btn-novo" onclick="novoRegistro()">Registrar outra</button>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ── mesmo padrão de autenticação do checklist_caminhao.html —
+// esse HTML era um formulário solto, direto no Apps Script antigo (sem
+// login nenhum); migrado pra falar com a API nova (Supabase) e exigir o
+// mesmo login do Mobile Frota.
+const API_BASE = 'https://barretos-backend.onrender.com/api';
+const SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+// Acessado direto (sem passar pelo menu/login do shell) — manda pra tela
+// de login em vez de deixar a tela quebrada tentando chamar a API sem token.
+if (!localStorage.getItem('mf_auth_token')) {
+  location.href = 'index.html';
+}
+
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function apiFetch(url, options){
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if(res.status === 401){
+    if(await tentarRenovarToken()){
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+  }
+  return res;
+}
+
+// ── INIT ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  // Data default: hoje
+  var hoje = new Date();
+  var yyyy = hoje.getFullYear();
+  var mm   = String(hoje.getMonth()+1).padStart(2,'0');
+  var dd   = String(hoje.getDate()).padStart(2,'0');
+  document.getElementById('f-data').value = yyyy + '-' + mm + '-' + dd;
+
+  carregarMotoristas();
+});
+
+function carregarMotoristas() {
+  apiFetch(API_BASE + '/diarias/motoristas')
+    .then(function(r) {
+      if(!r.ok) throw new Error('Falha ao buscar motoristas');
+      return r.json();
+    })
+    .then(function(motoristas) {
+      var sel = document.getElementById('f-motorista');
+      (motoristas || []).forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.id; opt.textContent = m.nome;
+        sel.appendChild(opt);
+      });
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('form-screen').style.display = 'block';
+    })
+    .catch(function() {
+      document.getElementById('loading-screen').innerHTML =
+        '<div style="color:#E24B4A;font-size:13px;text-align:center"><i class="ti ti-wifi-off"></i><br>Sem conexão.<br><button onclick="carregarMotoristas()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid #E24B4A;background:transparent;color:#E24B4A;cursor:pointer;font-family:inherit">Tentar novamente</button></div>';
+    });
+}
+
+async function enviar() {
+  var data          = document.getElementById('f-data').value; // já vem em yyyy-MM-dd, formato que a API espera
+  var motoristaSel  = document.getElementById('f-motorista');
+  var motoristaId   = motoristaSel.value;
+  var motoristaNome = motoristaSel.options[motoristaSel.selectedIndex] ? motoristaSel.options[motoristaSel.selectedIndex].textContent : '';
+  var obs           = document.getElementById('f-obs').value.trim();
+  var errEl     = document.getElementById('error-msg');
+  var errTxt    = document.getElementById('error-txt');
+  var btn       = document.getElementById('btn-enviar');
+
+  errEl.classList.remove('visible');
+
+  if (!data) { errTxt.textContent = 'Selecione a data.'; errEl.classList.add('visible'); return; }
+  if (!motoristaId) { errTxt.textContent = 'Selecione o motorista.'; errEl.classList.add('visible'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Enviando…';
+
+  try {
+    var res = await apiFetch(API_BASE + '/diarias', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ data: data, motorista_id: motoristaId, observacao: obs || null })
+    });
+    var json = await res.json().catch(function(){ return {}; });
+    if (res.ok) {
+      var partes = data.split('-');
+      var dataFmt = partes[2] + '/' + partes[1] + '/' + partes[0];
+      document.getElementById('form-screen').style.display = 'none';
+      document.getElementById('success-screen').classList.add('visible');
+      document.getElementById('success-detail').innerHTML =
+        '<b>' + motoristaNome + '</b><br>' + dataFmt +
+        (obs ? '<br><span style="font-size:11px;color:#888;margin-top:4px;display:block">"' + obs + '"</span>' : '');
+    } else {
+      errTxt.textContent = json.error || 'Erro ao registrar.';
+      errEl.classList.add('visible');
+    }
+  } catch(e) {
+    errTxt.textContent = 'Sem conexão. Tente novamente.';
+    errEl.classList.add('visible');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-send"></i> Registrar Diária';
+}
+
+function novoRegistro() {
+  document.getElementById('success-screen').classList.remove('visible');
+  document.getElementById('form-screen').style.display = 'block';
+  document.getElementById('f-obs').value = '';
+  document.getElementById('f-motorista').value = '';
+  document.getElementById('error-msg').classList.remove('visible');
+  // Reset data para hoje
+  var hoje = new Date();
+  var yyyy = hoje.getFullYear();
+  var mm   = String(hoje.getMonth()+1).padStart(2,'0');
+  var dd   = String(hoje.getDate()).padStart(2,'0');
+  document.getElementById('f-data').value = yyyy + '-' + mm + '-' + dd;
+}
+</script>
+</body>
+</html>
