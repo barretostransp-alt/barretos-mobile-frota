@@ -109,7 +109,7 @@ body.sidebar-open #overlay{display:block;}
     <div class="sb-item" data-page="gamificacao.html" onclick="navegar(this)">
       <i class="ti ti-trophy"></i> Ranking de Motoristas
     </div>
-    <div class="sb-item" data-page="detalhamento.html" onclick="navegar(this)">
+    <div class="sb-item" id="sb-detalhamento" data-page="detalhamento.html" onclick="navegar(this)">
       <i class="ti ti-report-money"></i> Detalhamento
     </div>
     <div class="sb-item" data-page="lancamentos.html" onclick="navegar(this)">
@@ -222,7 +222,7 @@ function logout(){
   executarLogout_();
 }
 function executarLogout_(){
-  ['mf_auth_token','mf_auth_refresh','mf_login'].forEach(function(k){ localStorage.removeItem(k); });
+  ['mf_auth_token','mf_auth_refresh','mf_login','mf_perfil'].forEach(function(k){ localStorage.removeItem(k); });
   location.reload();
 }
 
@@ -248,6 +248,16 @@ async function fazerLogin(){
     localStorage.setItem('mf_auth_token', j.access_token);
     localStorage.setItem('mf_auth_refresh', j.refresh_token);
     localStorage.setItem('mf_login', login);
+    // Perfil (motorista/colaborador/gestor) direto do Supabase (RLS deixa
+    // ler a propria linha) - guarda pra esconder o menu de Detalhamento
+    // de quem nao e gestor (dado financeiro sensivel, so gestor ve).
+    try{
+      var prRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?select=perfil&auth_user_id=eq.' + j.user.id, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + j.access_token },
+      });
+      var prLinhas = await prRes.json();
+      localStorage.setItem('mf_perfil', (Array.isArray(prLinhas) && prLinhas[0] && prLinhas[0].perfil) || '');
+    }catch(e){ localStorage.setItem('mf_perfil', ''); }
     iniciarApp();
   }catch(e){
     erroEl.textContent = 'Erro de conexão. Tente novamente.';
@@ -261,6 +271,13 @@ function iniciarApp(){
   aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
   document.getElementById('content-frame').src = 'checklist_caminhao.html';
   registrarServiceWorkerEAtualizarBotaoPush_();
+  // Detalhamento e dado financeiro sensivel - colaborador com acesso a
+  // Frota nao pode ver (so gestor e o proprio motorista, que ja so ve o
+  // dele mesmo). Escondido aqui, e o backend tambem recusa (403) mesmo
+  // que alguem force a URL direto.
+  var perfilAtual = localStorage.getItem('mf_perfil') || '';
+  var navDet = document.getElementById('sb-detalhamento');
+  if(navDet && perfilAtual === 'colaborador') navDet.style.display = 'none';
 }
 
 // ── Notificações Push — mesmo esquema do app mobile principal (chave
