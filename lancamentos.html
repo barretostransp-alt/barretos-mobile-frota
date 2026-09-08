@@ -109,6 +109,11 @@ body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montser
         <input type="date" id="f-data">
       </div>
 
+      <div class="field">
+        <label>Veículo (placa) *</label>
+        <select id="f-veiculo"><option value="">— selecione —</option></select>
+      </div>
+
       <div class="field" id="campo-cliente" style="display:none">
         <label>Cliente *</label>
         <select id="f-cliente" onchange="onClienteChange()">
@@ -229,6 +234,7 @@ async function selecionarTipo(tipo){
   document.getElementById('f-data').value = hojeISO();
   document.getElementById('f-fotos').value = '';
   document.getElementById('form-erro').classList.remove('visible');
+  await popularVeiculos();
 
   var campoCliente = document.getElementById('campo-cliente');
   if(tipo === 'pre_viagem'){
@@ -240,6 +246,18 @@ async function selecionarTipo(tipo){
 
   document.getElementById('f-fotos').multiple = (tipo === 'abastecimento');
   document.getElementById('label-fotos').textContent = (tipo === 'abastecimento') ? 'Fotos do abastecimento *' : 'Foto *';
+}
+
+async function popularVeiculos(){
+  var sel = document.getElementById('f-veiculo');
+  if(sel.options.length > 1) return; // já populado, não refaz
+  try{
+    var r = await apiFetch(API_BASE + '/lancamentos-motorista/veiculos');
+    var veiculos = r.ok ? await r.json() : [];
+    sel.innerHTML = '<option value="">— selecione —</option>' + veiculos.map(function(v){
+      return '<option value="'+v.id+'">'+e(v.placa)+(v.modelo?' — '+e(v.modelo):'')+'</option>';
+    }).join('');
+  }catch(e){}
 }
 
 async function popularClientes(){
@@ -267,11 +285,13 @@ function voltarTipos(){
 
 async function enviarLancamento(){
   var data = document.getElementById('f-data').value;
+  var veiculoId = document.getElementById('f-veiculo').value;
   var arquivos = document.getElementById('f-fotos').files;
   var erroEl = document.getElementById('form-erro');
   erroEl.classList.remove('visible');
 
   if(!data){ erroEl.textContent = 'Selecione a data.'; erroEl.classList.add('visible'); return; }
+  if(!veiculoId){ erroEl.textContent = 'Selecione o veículo.'; erroEl.classList.add('visible'); return; }
   if(!arquivos.length){ erroEl.textContent = 'Anexe ao menos uma foto.'; erroEl.classList.add('visible'); return; }
 
   var cliente = null, clienteNovo = false;
@@ -313,7 +333,7 @@ async function enviarLancamento(){
     btn.innerHTML = '<span class="spinner"></span> Salvando…';
     var res = await apiFetch(API_BASE + '/lancamentos-motorista', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ tipo: tipoAtual, data: data, cliente: cliente, cliente_novo: clienteNovo, fotos: fotos }),
+      body: JSON.stringify({ tipo: tipoAtual, data: data, veiculo_id: veiculoId, cliente: cliente, cliente_novo: clienteNovo, fotos: fotos }),
     });
     if(!res.ok){ var err = await res.json().catch(function(){return {};}); throw new Error(err.error || 'Erro ao salvar lançamento.'); }
 
