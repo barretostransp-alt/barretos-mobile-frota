@@ -162,17 +162,17 @@ function renderDetalhamento_(m){
   document.getElementById('kpi-comissao').textContent = fmtBRL(m.totalComissaoRS);
 
   var html = '';
+  if(m.semanasDiaria && m.semanasDiaria.length){
+    html += '<div class="sec-title">Diária por semana (paga semanalmente)</div>';
+    html += m.semanasDiaria.map(function(s){
+      return '<div class="item-row"><div class="item-date">'+isoParaBR(s.inicio)+' – '+isoParaBR(s.fim)+'</div><div class="item-desc">'+s.qtdDiarias+' diária(s)</div><div class="item-val">'+fmtBRL(s.valor)+'</div></div>';
+    }).join('');
+  }
   if(m.viagens.length){
     html += '<div class="sec-title">Viagens</div>';
     html += m.viagens.map(function(v){
       var rota = e(v.origem) + (v.ufOrigem?'/'+v.ufOrigem:'') + ' → ' + e(v.destino) + (v.ufDestino?'/'+v.ufDestino:'');
       return '<div class="item-row"><div class="item-date">'+isoParaBR(v.data)+'</div><div class="item-desc">'+rota+'</div><div class="item-val">'+fmtBRL(v.valorComissao)+'</div></div>';
-    }).join('');
-  }
-  if(m.semanasDiaria && m.semanasDiaria.length){
-    html += '<div class="sec-title">Diária por semana (paga semanalmente)</div>';
-    html += m.semanasDiaria.map(function(s){
-      return '<div class="item-row"><div class="item-date">'+isoParaBR(s.inicio)+' – '+isoParaBR(s.fim)+'</div><div class="item-desc">'+s.qtdDiarias+' diária(s)</div><div class="item-val">'+fmtBRL(s.valor)+'</div></div>';
     }).join('');
   }
   if(m.diarias.length){
