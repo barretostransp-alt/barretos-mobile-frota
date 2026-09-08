@@ -222,7 +222,7 @@ function logout(){
   executarLogout_();
 }
 function executarLogout_(){
-  ['mf_auth_token','mf_auth_refresh','mf_login','mf_perfil'].forEach(function(k){ localStorage.removeItem(k); });
+  ['mf_auth_token','mf_auth_refresh','mf_login','mf_perfil','mf_motorista_id'].forEach(function(k){ localStorage.removeItem(k); });
   location.reload();
 }
 
@@ -252,12 +252,13 @@ async function fazerLogin(){
     // ler a propria linha) - guarda pra esconder o menu de Detalhamento
     // de quem nao e gestor (dado financeiro sensivel, so gestor ve).
     try{
-      var prRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?select=perfil&auth_user_id=eq.' + j.user.id, {
+      var prRes = await fetch(SUPABASE_URL + '/rest/v1/usuarios?select=perfil,motorista_id&auth_user_id=eq.' + j.user.id, {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + j.access_token },
       });
       var prLinhas = await prRes.json();
       localStorage.setItem('mf_perfil', (Array.isArray(prLinhas) && prLinhas[0] && prLinhas[0].perfil) || '');
-    }catch(e){ localStorage.setItem('mf_perfil', ''); }
+      localStorage.setItem('mf_motorista_id', (Array.isArray(prLinhas) && prLinhas[0] && prLinhas[0].motorista_id) || '');
+    }catch(e){ localStorage.setItem('mf_perfil', ''); localStorage.setItem('mf_motorista_id', ''); }
     iniciarApp();
   }catch(e){
     erroEl.textContent = 'Erro de conexão. Tente novamente.';

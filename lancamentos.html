@@ -43,6 +43,17 @@ body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montser
   padding:12px 14px;color:var(--txt);font-family:'Montserrat',sans-serif;font-size:14px;}
 .field input[type=file]{padding:10px;font-size:12px;}
 
+.foto-botoes{display:flex;gap:8px;}
+.btn-foto{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:10px;
+  padding:11px 10px;color:var(--txt);font-family:'Montserrat',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;}
+.btn-foto:active{border-color:var(--gold);}
+.fotos-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.foto-chip{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:6px 8px;font-size:11px;max-width:100%;}
+.foto-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;}
+.foto-chip button{background:none;border:none;color:var(--red);font-size:14px;line-height:1;cursor:pointer;padding:0;font-family:inherit;}
+
 .btn-voltar{background:transparent;border:none;color:var(--txt-dim);font-size:12px;cursor:pointer;
   display:flex;align-items:center;gap:4px;margin-bottom:10px;font-family:inherit;}
 .btn-submit{width:100%;padding:15px;border-radius:12px;border:none;background:var(--gold);color:#111;
@@ -125,7 +136,13 @@ body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montser
 
       <div class="field">
         <label id="label-fotos">Foto *</label>
-        <input type="file" id="f-fotos" accept="image/*">
+        <div class="foto-botoes">
+          <button type="button" class="btn-foto" onclick="document.getElementById('f-foto-camera').click()"><i class="ti ti-camera"></i> Tirar Foto</button>
+          <button type="button" class="btn-foto" onclick="document.getElementById('f-foto-galeria').click()"><i class="ti ti-photo"></i> Galeria</button>
+        </div>
+        <input type="file" id="f-foto-camera" accept="image/*" capture="environment" style="display:none">
+        <input type="file" id="f-foto-galeria" accept="image/*" multiple style="display:none">
+        <div id="fotos-preview" class="fotos-preview"></div>
       </div>
 
       <div class="error-msg" id="form-erro"></div>
@@ -224,6 +241,50 @@ var TITULOS_TIPO = {
   diverso: { titulo:'Diverso', icon:'ti-receipt' },
 };
 
+// Acumula fotos tiradas na hora (câmera) e escolhidas da galeria — os dois
+// inputs nativos não conseguem fazer isso sozinhos (no Android, um input
+// com "multiple" some com a opção de câmera, e um com "capture" só tira
+// uma foto por vez), então cada novo arquivo escolhido/tirado é somado
+// aqui em vez de substituir o que já tinha.
+var fotosSelecionadas = [];
+var MAX_FOTOS_POR_TIPO = { pre_viagem:1, abastecimento:20, diverso:1 };
+
+function adicionarFotos_(fileList){
+  var max = MAX_FOTOS_POR_TIPO[tipoAtual] || 1;
+  var novas = Array.prototype.slice.call(fileList);
+  if(max === 1){
+    fotosSelecionadas = novas.slice(0,1);
+  } else {
+    novas.forEach(function(f){
+      if(fotosSelecionadas.length < max) fotosSelecionadas.push(f);
+    });
+  }
+  renderFotosPreview_();
+}
+
+function removerFoto_(idx){
+  fotosSelecionadas.splice(idx,1);
+  renderFotosPreview_();
+}
+
+function renderFotosPreview_(){
+  var el = document.getElementById('fotos-preview');
+  el.innerHTML = fotosSelecionadas.map(function(f,i){
+    return '<div class="foto-chip"><i class="ti ti-photo" style="font-size:12px;color:var(--gold)"></i>'+
+      '<span>'+e(f.name)+'</span>'+
+      '<button type="button" onclick="removerFoto_('+i+')" title="Remover">×</button></div>';
+  }).join('');
+}
+
+document.getElementById('f-foto-camera').addEventListener('change', function(ev){
+  adicionarFotos_(ev.target.files);
+  ev.target.value = '';
+});
+document.getElementById('f-foto-galeria').addEventListener('change', function(ev){
+  adicionarFotos_(ev.target.files);
+  ev.target.value = '';
+});
+
 async function selecionarTipo(tipo){
   tipoAtual = tipo;
   document.getElementById('tela-tipos').style.display = 'none';
@@ -232,7 +293,8 @@ async function selecionarTipo(tipo){
   document.getElementById('form-titulo').textContent = TITULOS_TIPO[tipo].titulo;
   document.getElementById('form-icon').className = 'ti ' + TITULOS_TIPO[tipo].icon;
   document.getElementById('f-data').value = hojeISO();
-  document.getElementById('f-fotos').value = '';
+  fotosSelecionadas = [];
+  renderFotosPreview_();
   document.getElementById('form-erro').classList.remove('visible');
   await popularVeiculos();
 
@@ -244,7 +306,7 @@ async function selecionarTipo(tipo){
     campoCliente.style.display = 'none';
   }
 
-  document.getElementById('f-fotos').multiple = (tipo === 'abastecimento');
+  document.getElementById('f-foto-galeria').multiple = (MAX_FOTOS_POR_TIPO[tipo] || 1) > 1;
   document.getElementById('label-fotos').textContent = (tipo === 'abastecimento') ? 'Fotos do abastecimento *' : 'Foto *';
 }
 
@@ -286,7 +348,7 @@ function voltarTipos(){
 async function enviarLancamento(){
   var data = document.getElementById('f-data').value;
   var veiculoId = document.getElementById('f-veiculo').value;
-  var arquivos = document.getElementById('f-fotos').files;
+  var arquivos = fotosSelecionadas;
   var erroEl = document.getElementById('form-erro');
   erroEl.classList.remove('visible');
 
@@ -339,6 +401,8 @@ async function enviarLancamento(){
 
     document.getElementById('tela-form').style.display = 'none';
     document.getElementById('tela-sucesso').classList.add('visible');
+    fotosSelecionadas = [];
+    renderFotosPreview_();
   }catch(e){
     erroEl.textContent = e.message || 'Erro ao enviar. Tente de novo.';
     erroEl.classList.add('visible');

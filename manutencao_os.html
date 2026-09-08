@@ -186,13 +186,13 @@ body.tema-claro .logo-claro{display:block}
       <h1>Manutenção OS</h1>
       <p>Ordens de serviço abertas automaticamente pelos checklists, e as que você criar aqui.</p>
     </div>
-    <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
+    <div style="display:flex;flex-direction:column;gap:7px;flex-shrink:0" id="acoes-topo">
       <button class="bprim" onclick="abrirModalNovaOs()"><i class="ti ti-plus"></i> Nova OS</button>
       <button class="bghist" onclick="abrirHistorico()"><i class="ti ti-history"></i> Histórico</button>
     </div>
   </div>
 
-  <div class="kpi-row">
+  <div class="kpi-row" id="kpi-row">
     <div class="kpi-tile"><div class="kpi-val" id="kpi-aberta" style="color:var(--red)">0</div><div class="kpi-lbl">Abertas</div></div>
     <div class="kpi-tile"><div class="kpi-val" id="kpi-andamento" style="color:var(--gold)">0</div><div class="kpi-lbl">Em Andamento</div></div>
     <div class="kpi-tile"><div class="kpi-val" id="kpi-concluida" style="color:var(--green)">0</div><div class="kpi-lbl">Concluídas</div></div>
@@ -204,7 +204,7 @@ body.tema-claro .logo-claro{display:block}
     <button class="search-clear" id="busca-clear" onclick="limparBusca()" style="display:none"><i class="ti ti-x"></i></button>
   </div>
 
-  <div class="tabs">
+  <div class="tabs" id="tabs-row">
     <div class="tab active" data-filtro="aberta" onclick="filtrar(this)">Abertas <span class="tab-ct" id="ct-aberta">0</span></div>
     <div class="tab" data-filtro="em_andamento" onclick="filtrar(this)">Em Andamento <span class="tab-ct" id="ct-andamento">0</span></div>
     <div class="tab" data-filtro="concluida" onclick="filtrar(this)">Concluídas <span class="tab-ct" id="ct-concluida">0</span></div>
@@ -321,6 +321,15 @@ function mapChecklistDoApi_(c){
     totalReprovados: c.total_reprovados
   };
 }
+
+// Pedido do Alex: motorista comum só pode ver as OS abertas, sem editar
+// nada nem consultar o histórico de checklists — função completa fica só
+// pro desktop (perfil gestor/colaborador) e pro Luiz Gustavo Forasteiro
+// Duarte, que cuida da manutenção mesmo sendo motorista. O backend já
+// aplica essa mesma trava (defesa de verdade); isso aqui só adapta a tela.
+const MOTORISTA_ACESSO_TOTAL_OS = '78528cf0-176c-47de-93f2-9c8d53d3d042';
+const acessoTotalOs = (localStorage.getItem('mf_perfil') || '') !== 'motorista'
+  || localStorage.getItem('mf_motorista_id') === MOTORISTA_ACESSO_TOTAL_OS;
 
 let osCache = [];
 let checklistsCache = [];
@@ -455,20 +464,9 @@ function renderTudo(){
       acoesHtml = '<button class="os-btn-reabrir" onclick="mudarStatus(event,\''+os.id+'\',\'aberta\')"><i class="ti ti-refresh"></i> Reabrir</button>';
     }
 
-    return '<div class="os-card" data-id="'+os.id+'">'+
-      '<div class="os-hd" onclick="toggleOs(this)">'+
-        '<div class="os-placa">'+e(os.placa)+'</div>'+
-        '<div class="os-main">'+
-          '<div class="os-item">'+e(os.item)+'</div>'+
-          '<div class="os-meta">'+(os.motorista?e(os.motorista)+' · ':'')+fmtData(os.dataAbertura)+(os.checklistChave?' · via checklist':' · manual')+'</div>'+
-        '</div>'+
-        '<div class="os-prio '+(os.prioridade||'media')+'">'+labelPrioridade(os.prioridade)+'</div>'+
-        '<div class="os-badge '+os.status+'">'+labelStatus(os.status)+'</div>'+
-        '<i class="ti ti-chevron-down os-chev"></i>'+
-      '</div>'+
-      '<div class="os-body">'+
-        (os.problema ? '<div class="os-problema">'+e(os.problema)+'</div>' : '') +
-        (os.qtdFotos ? '<div class="os-fotos-info"><i class="ti ti-camera"></i> '+os.qtdFotos+' foto(s) anexada(s) no checklist</div>' : '') +
+    let secaoGestaoHtml;
+    if(acessoTotalOs){
+      secaoGestaoHtml =
         '<div class="os-field">'+
           '<label>Prioridade</label>'+
           '<select onclick="event.stopPropagation()" onchange="atualizarPrioridade(\''+os.id+'\', this.value)">'+
@@ -487,7 +485,30 @@ function renderTudo(){
             '<input type="text" placeholder="Adicionar observação..." onkeydown="if(event.key===\'Enter\'){adicionarNota(\''+os.id+'\', this); event.preventDefault();}">'+
             '<button onclick="adicionarNota(\''+os.id+'\', this.previousElementSibling)"><i class="ti ti-send"></i></button>'+
           '</div>'+
+        '</div>';
+    } else {
+      // Só leitura: mostra mecânico e observações já registradas, sem
+      // nenhum campo editável nem botão de ação.
+      secaoGestaoHtml =
+        (os.mecanico ? '<div class="os-field"><label>Mecânico responsável</label><div style="font-size:12.5px;color:var(--txt)">'+e(os.mecanico)+'</div></div>' : '') +
+        (notasHtml ? '<div class="os-notas">'+notasHtml+'</div>' : '');
+    }
+
+    return '<div class="os-card" data-id="'+os.id+'">'+
+      '<div class="os-hd" onclick="toggleOs(this)">'+
+        '<div class="os-placa">'+e(os.placa)+'</div>'+
+        '<div class="os-main">'+
+          '<div class="os-item">'+e(os.item)+'</div>'+
+          '<div class="os-meta">'+(os.motorista?e(os.motorista)+' · ':'')+fmtData(os.dataAbertura)+(os.checklistChave?' · via checklist':' · manual')+'</div>'+
         '</div>'+
+        '<div class="os-prio '+(os.prioridade||'media')+'">'+labelPrioridade(os.prioridade)+'</div>'+
+        '<div class="os-badge '+os.status+'">'+labelStatus(os.status)+'</div>'+
+        '<i class="ti ti-chevron-down os-chev"></i>'+
+      '</div>'+
+      '<div class="os-body">'+
+        (os.problema ? '<div class="os-problema">'+e(os.problema)+'</div>' : '') +
+        (os.qtdFotos ? '<div class="os-fotos-info"><i class="ti ti-camera"></i> '+os.qtdFotos+' foto(s) anexada(s) no checklist</div>' : '') +
+        secaoGestaoHtml +
       '</div>'+
     '</div>';
   }).join('');
@@ -606,6 +627,13 @@ function alternarTema(){
   var atual = localStorage.getItem('mf_tema') === 'claro' ? 'escuro' : 'claro';
   localStorage.setItem('mf_tema', atual);
   aplicarTema(atual);
+}
+
+if(!acessoTotalOs){
+  document.getElementById('acoes-topo').style.display = 'none';
+  document.getElementById('kpi-row').style.display = 'none';
+  document.getElementById('tabs-row').style.display = 'none';
+  document.querySelector('.hero p').textContent = 'Ordens de serviço abertas na frota — só consulta.';
 }
 
 aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
