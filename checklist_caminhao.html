@@ -209,7 +209,15 @@ body.tema-claro .logo-claro{display:block}
     <div class="fg-grid">
       <div class="fg full" style="grid-column:1/-1">
         <label>Motorista *</label>
-        <input type="text" id="f-motorista" placeholder="Nome completo">
+        <select id="f-motorista">
+          <option value="">— selecione —</option>
+          <option value="ANANIAS ELISBAO SOBRINHO">ANANIAS ELISBAO SOBRINHO</option>
+          <option value="CLEBER ARAUJO DA SILVA">CLEBER ARAUJO DA SILVA</option>
+          <option value="LUIZ GUSTAVO FORASTEIRO DUARTE">LUIZ GUSTAVO FORASTEIRO DUARTE</option>
+          <option value="PAULO HENRIQUE DE SOUSA">PAULO HENRIQUE DE SOUSA</option>
+          <option value="PAULO JOSE PAZ">PAULO JOSE PAZ</option>
+          <option value="TIAGO BARBOSA DE SOUSA">TIAGO BARBOSA DE SOUSA</option>
+        </select>
       </div>
       <div class="fg">
         <label>Placa *</label>
@@ -811,6 +819,7 @@ function resetForm(){
 document.getElementById('btn-submit').addEventListener('click', submitChecklist);
 ['f-motorista','f-placa'].forEach(function(id){
   document.getElementById(id).addEventListener('input', updateProgress);
+  document.getElementById(id).addEventListener('change', updateProgress);
 });
 
 // ── Tema claro/escuro (persistido, mesmo padrao usado no resto do
