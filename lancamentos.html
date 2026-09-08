@@ -95,7 +95,7 @@ body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montser
       <div><strong>Lançamento Diverso</strong><span>Dia e foto — o escritório classifica</span></div>
     </div>
 
-    <div class="sec-title" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-dim);margin:18px 4px 8px">Meus últimos lançamentos</div>
+    <div class="sec-title" id="titulo-historico" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-dim);margin:18px 4px 8px">Meus últimos lançamentos</div>
     <div id="lista-historico"><div style="font-size:12px;color:var(--txt-dim);padding:8px 0">Carregando…</div></div>
   </div>
 
@@ -351,14 +351,18 @@ var TITULOS_BADGE = { Pendente:'badge-pendente', Aprovado:'badge-aprovado', Reje
 var TITULOS_TIPO_LBL = { pre_viagem:'Pré-Viagem', abastecimento:'Abastecimento', diverso:'Diverso' };
 async function carregarHistorico(){
   var el = document.getElementById('lista-historico');
+  var vendoTudo = (localStorage.getItem('mf_perfil') || '') === 'gestor';
+  var tituloEl = document.getElementById('titulo-historico');
+  if(tituloEl) tituloEl.textContent = vendoTudo ? 'Últimos lançamentos (todos os motoristas)' : 'Meus últimos lançamentos';
   try{
     var r = await apiFetch(API_BASE + '/lancamentos-motorista');
     if(!r.ok) throw new Error();
     var lista = await r.json();
     if(!lista.length){ el.innerHTML = '<div style="font-size:12px;color:var(--txt-dim);padding:8px 0">Nenhum lançamento ainda.</div>'; return; }
-    el.innerHTML = lista.slice(0,10).map(function(l){
+    el.innerHTML = lista.slice(0, vendoTudo ? 30 : 10).map(function(l){
+      var nomeMotorista = vendoTudo && l.motorista && l.motorista.nome ? ' · '+e(l.motorista.nome) : '';
       return '<div class="hist-item"><span class="badge '+(TITULOS_BADGE[l.status]||'badge-pendente')+'">'+l.status+'</span>'+
-        '<span style="flex:1">'+TITULOS_TIPO_LBL[l.tipo]+(l.cliente?' · '+e(l.cliente):'')+'</span>'+
+        '<span style="flex:1">'+TITULOS_TIPO_LBL[l.tipo]+(l.cliente?' · '+e(l.cliente):'')+nomeMotorista+'</span>'+
         '<span style="color:var(--txt-dim)">'+isoParaBR(l.data)+'</span></div>';
     }).join('');
   }catch(e){
