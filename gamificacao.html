@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking de Motoristas — Grupo Barreto's</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#090A0D;--surface:#0F1117;--card:#151820;--border:#1E2130;
+  --gold:#F5B800;--gold-dim:rgba(245,184,0,.12);--gold-b:rgba(245,184,0,.28);
+  --txt:#E8EAF0;--txt-dim:#6B7280;--txt-mid:#9CA3AF;
+  --green:#22C55E;--red:#EF4444;--blue:#3B82F6;--r:8px;
+}
+body.tema-claro{
+  --bg:#F0F2F5;--surface:#FFFFFF;--card:#FFFFFF;--border:#E2E6ED;
+  --gold:#D97706;--gold-dim:rgba(217,119,6,.10);--gold-b:rgba(217,119,6,.28);
+  --txt:#111827;--txt-dim:#6B7280;--txt-mid:#4B5563;
+  --green:#059669;--red:#DC2626;--blue:#2563EB;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montserrat',sans-serif;transition:background .15s,color .15s;padding-bottom:40px;}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 0;}
+.hero{padding:18px 4px 14px;}
+.hero h1{font-family:'Montserrat',sans-serif;font-size:19px;font-weight:800;color:var(--txt);margin-bottom:4px;}
+.hero p{font-size:12px;color:var(--txt-dim);line-height:1.5;}
+.hero .periodo{font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:8px;}
+
+.loading{text-align:center;padding:60px 20px;color:var(--txt-dim);font-size:13px;}
+.spinner{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.driver-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px;margin-bottom:12px;}
+.driver-card.first{border-color:var(--gold-b);background:linear-gradient(180deg,var(--gold-dim),var(--surface) 60%);}
+.driver-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.driver-rank{width:34px;height:34px;border-radius:50%;background:var(--card);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--txt-mid);flex-shrink:0;}
+.driver-card.first .driver-rank{background:var(--gold);border-color:var(--gold);color:#111;}
+.driver-name-wrap{flex:1;min-width:0;}
+.driver-name{font-size:14px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.driver-badge{font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;
+  display:flex;align-items:center;gap:4px;margin-top:2px;}
+.driver-score{font-size:22px;font-weight:800;color:var(--txt);font-family:'Montserrat',sans-serif;flex-shrink:0;}
+.driver-score span{font-size:11px;color:var(--txt-dim);font-weight:500;}
+
+.novo-aviso{font-size:11px;color:var(--txt-dim);background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.novo-aviso i{color:var(--blue);}
+
+.crit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.crit-item{background:var(--card);border-radius:8px;padding:8px 10px;}
+.crit-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--txt-dim);
+  display:flex;align-items:center;gap:5px;margin-bottom:4px;}
+.crit-vals{display:flex;align-items:baseline;justify-content:space-between;}
+.crit-num{font-size:12px;color:var(--txt-mid);}
+.crit-delta{font-size:11px;font-weight:700;display:flex;align-items:center;gap:2px;}
+.crit-delta.up{color:var(--green);}
+.crit-delta.down{color:var(--red);}
+.crit-delta.flat{color:var(--txt-dim);}
+
+.empty-state{text-align:center;padding:50px 20px;color:var(--txt-dim);font-size:13px;}
+.empty-state i{font-size:32px;display:block;margin-bottom:10px;color:var(--txt-dim);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <h1><i class="ti ti-trophy" style="color:var(--gold)"></i> Ranking de Motoristas</h1>
+    <p>Cada critério compara o motorista com o próprio mês anterior — não é sobre quem fatura mais, é sobre quem melhora mais. O #1 do mês vira o "Motorista do Mês".</p>
+    <div class="periodo" id="periodo-label"></div>
+  </div>
+
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    Carregando ranking…
+  </div>
+
+  <div id="lista-ranking"></div>
+</div>
+
+<script>
+const API_BASE = 'https://barretos-backend.onrender.com/api';
+const SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+if (!localStorage.getItem('mf_auth_token')) {
+  location.href = 'index.html';
+}
+
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function apiFetch(url, options){
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if(res.status === 401){
+    if(await tentarRenovarToken()){
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+  }
+  return res;
+}
+
+function e(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+var MESES_ = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function labelMes_(chave){
+  if(!chave) return '';
+  var p = chave.split('-');
+  return MESES_[Number(p[1])-1] + '/' + p[0];
+}
+
+function deltaHtml_(atual, anterior, invertido){
+  if(anterior === null || anterior === undefined) return '<span class="crit-delta flat"><i class="ti ti-minus"></i></span>';
+  var diff = atual - anterior;
+  if(invertido) diff = -diff;
+  var cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+  var icon = diff > 0 ? 'ti-trending-up' : diff < 0 ? 'ti-trending-down' : 'ti-minus';
+  return '<span class="crit-delta ' + cls + '"><i class="ti ' + icon + '"></i></span>';
+}
+
+function criterioCard_(label, icon, atual, anterior, unidade, invertido){
+  var atualTxt = (atual === null || atual === undefined) ? '—' : (atual + (unidade||''));
+  var anteriorTxt = (anterior === null || anterior === undefined) ? 'sem dado' : ('mês ant.: ' + anterior + (unidade||''));
+  return '<div class="crit-item">' +
+    '<div class="crit-label"><i class="ti ' + icon + '"></i> ' + label + '</div>' +
+    '<div class="crit-vals"><span class="crit-num">' + atualTxt + ' <span style="opacity:.6">(' + anteriorTxt + ')</span></span>' +
+    deltaHtml_(atual, anterior, invertido) +
+    '</div></div>';
+}
+
+function renderRanking_(dados){
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('periodo-label').textContent = labelMes_(dados.mesAtual) + ' vs ' + labelMes_(dados.mesAnterior);
+
+  var el = document.getElementById('lista-ranking');
+  var validos = dados.ranking.filter(function(r){ return !r.erro; });
+  if(!validos.length){
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-mood-empty"></i>Nenhum motorista participante encontrado no cadastro.</div>';
+    return;
+  }
+
+  el.innerHTML = validos.map(function(r, idx){
+    var c = r.criterios;
+    var badge = idx === 0 ? '<div class="driver-badge"><i class="ti ti-trophy"></i> Motorista do Mês</div>' : '';
+    var aviso = r.motoristaNovo ? '<div class="novo-aviso"><i class="ti ti-info-circle"></i> Primeiro mês com histórico — pontuação neutra em todos os critérios.</div>' : '';
+    return '<div class="driver-card ' + (idx===0?'first':'') + '">' +
+      '<div class="driver-top">' +
+        '<div class="driver-rank">' + (idx+1) + 'º</div>' +
+        '<div class="driver-name-wrap"><div class="driver-name">' + e(r.nome) + '</div>' + badge + '</div>' +
+        '<div class="driver-score">' + r.total + '<span>/100</span></div>' +
+      '</div>' +
+      aviso +
+      '<div class="crit-grid">' +
+        criterioCard_('Diárias', 'ti-calendar-check', c.diarias.atual, c.diarias.anterior, '', false) +
+        criterioCard_('Checklist', 'ti-clipboard-check', c.checklist.atual, c.checklist.anterior, '', false) +
+        criterioCard_('Consumo', 'ti-gas-station', c.combustivel.atual, c.combustivel.anterior, ' km/L', false) +
+        criterioCard_('Multas', 'ti-alert-triangle', c.multas.atual, c.multas.anterior, '', true) +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function carregarRanking(){
+  try{
+    var r = await apiFetch(API_BASE + '/gamificacao-motoristas');
+    if(!r.ok) throw new Error('Falha ao buscar ranking');
+    var dados = await r.json();
+    renderRanking_(dados);
+  }catch(e){
+    document.getElementById('loading').innerHTML =
+      '<i class="ti ti-wifi-off" style="font-size:24px;display:block;margin-bottom:8px"></i>Sem conexão.<br>' +
+      '<button onclick="carregarRanking()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit">Tentar novamente</button>';
+  }
+}
+
+function aplicarTema(t){
+  document.body.classList.toggle('tema-claro', t === 'claro');
+}
+aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
+
+carregarRanking();
+</script>
+</body>
+</html>
