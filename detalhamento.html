@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detalhamento — Grupo Barreto's</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#090A0D;--surface:#0F1117;--card:#151820;--border:#1E2130;
+  --gold:#F5B800;--gold-dim:rgba(245,184,0,.12);--gold-b:rgba(245,184,0,.28);
+  --txt:#E8EAF0;--txt-dim:#6B7280;--txt-mid:#9CA3AF;
+  --green:#22C55E;--red:#EF4444;--blue:#3B82F6;--r:8px;
+}
+body.tema-claro{
+  --bg:#F0F2F5;--surface:#FFFFFF;--card:#FFFFFF;--border:#E2E6ED;
+  --gold:#D97706;--gold-dim:rgba(217,119,6,.10);--gold-b:rgba(217,119,6,.28);
+  --txt:#111827;--txt-dim:#6B7280;--txt-mid:#4B5563;
+  --green:#059669;--red:#DC2626;--blue:#2563EB;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{min-height:100vh;background:var(--bg);color:var(--txt);font-family:'Montserrat',sans-serif;transition:background .15s,color .15s;padding-bottom:40px;}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 0;}
+.hero{padding:18px 4px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.hero h1{font-family:'Montserrat',sans-serif;font-size:19px;font-weight:800;color:var(--txt);}
+select#mes-select{background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--txt);
+  font-family:'Montserrat',sans-serif;font-size:12px;padding:8px 10px;}
+
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.kpi-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.kpi-box .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--txt-dim);margin-bottom:6px;}
+.kpi-box .val{font-size:20px;font-weight:800;}
+.kpi-box.diaria .val{color:var(--gold);}
+.kpi-box.comissao .val{color:var(--blue);}
+
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-dim);margin:16px 4px 8px;}
+.item-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.item-date{font-size:11px;color:var(--txt-dim);font-family:monospace;flex-shrink:0;}
+.item-desc{font-size:13px;flex:1;min-width:0;}
+.item-val{font-size:13px;font-weight:700;color:var(--blue);flex-shrink:0;}
+
+.loading{text-align:center;padding:60px 20px;color:var(--txt-dim);font-size:13px;}
+.spinner{width:22px;height:22px;border:2.5px solid var(--border);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.empty-state{text-align:center;padding:30px 20px;color:var(--txt-dim);font-size:12px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <h1><i class="ti ti-report-money" style="color:var(--gold)"></i> Detalhamento</h1>
+    <select id="mes-select" onchange="carregarDetalhamento()"></select>
+  </div>
+
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    Carregando…
+  </div>
+
+  <div id="conteudo" style="display:none">
+    <div class="kpi-row">
+      <div class="kpi-box diaria"><div class="lbl">Diária</div><div class="val" id="kpi-diaria">—</div></div>
+      <div class="kpi-box comissao"><div class="lbl">Comissão</div><div class="val" id="kpi-comissao">—</div></div>
+    </div>
+    <div id="lista-detalhamento"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://barretos-backend.onrender.com/api';
+const SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+if (!localStorage.getItem('mf_auth_token')) {
+  location.href = 'index.html';
+}
+
+function getAuthToken()    { return localStorage.getItem('mf_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('mf_auth_refresh'); }
+
+async function tentarRenovarToken(){
+  var refresh = getRefreshToken();
+  if(!refresh) return false;
+  try{
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method:'POST', headers:{'Content-Type':'application/json', apikey: SUPABASE_ANON_KEY},
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if(!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('mf_auth_token', j.access_token);
+    localStorage.setItem('mf_auth_refresh', j.refresh_token);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function apiFetch(url, options){
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if(res.status === 401){
+    if(await tentarRenovarToken()){
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+  }
+  return res;
+}
+
+function e(s){ return String(s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+var MESES_ = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function isoParaBR(iso){
+  if(!iso) return '';
+  var p = iso.split('-');
+  return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : iso;
+}
+function fmtBRL(n){
+  return (Number(n)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+
+function popularMeses(){
+  var sel = document.getElementById('mes-select');
+  var hoje = new Date();
+  var html = '';
+  for(var i=0;i<12;i++){
+    var d = new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
+    var chave = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    html += '<option value="'+chave+'">'+MESES_[d.getMonth()]+'/'+d.getFullYear()+'</option>';
+  }
+  sel.innerHTML = html;
+}
+
+async function carregarDetalhamento(){
+  var mes = document.getElementById('mes-select').value;
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('conteudo').style.display = 'none';
+  try{
+    var r = await apiFetch(API_BASE + '/detalhamento-motoristas?mes=' + encodeURIComponent(mes));
+    if(!r.ok){
+      var j = await r.json().catch(function(){ return {}; });
+      throw new Error(j.error || 'Falha ao buscar detalhamento');
+    }
+    var dados = await r.json();
+    renderDetalhamento_(dados.motorista);
+  }catch(e){
+    document.getElementById('loading').innerHTML =
+      '<i class="ti ti-wifi-off" style="font-size:24px;display:block;margin-bottom:8px"></i>' + (e.message||'Sem conexão') + '<br>' +
+      '<button onclick="carregarDetalhamento()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit">Tentar novamente</button>';
+  }
+}
+
+function renderDetalhamento_(m){
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('conteudo').style.display = 'block';
+  document.getElementById('kpi-diaria').textContent = fmtBRL(m.totalDiariaRS) + ' (' + m.qtdDiarias + ')';
+  document.getElementById('kpi-comissao').textContent = fmtBRL(m.totalComissaoRS);
+
+  var html = '';
+  if(m.viagens.length){
+    html += '<div class="sec-title">Viagens</div>';
+    html += m.viagens.map(function(v){
+      var rota = e(v.origem) + (v.ufOrigem?'/'+v.ufOrigem:'') + ' → ' + e(v.destino) + (v.ufDestino?'/'+v.ufDestino:'');
+      return '<div class="item-row"><div class="item-date">'+isoParaBR(v.data)+'</div><div class="item-desc">'+rota+'</div><div class="item-val">'+fmtBRL(v.valorComissao)+'</div></div>';
+    }).join('');
+  }
+  if(m.diarias.length){
+    html += '<div class="sec-title">Diárias</div>';
+    html += m.diarias.map(function(d){
+      return '<div class="item-row"><div class="item-date">'+isoParaBR(d.data)+'</div><div class="item-desc">'+e(d.observacao||'—')+'</div></div>';
+    }).join('');
+  }
+  if(!html){
+    html = '<div class="empty-state">Nenhuma viagem ou diária registrada nesse mês.</div>';
+  }
+  document.getElementById('lista-detalhamento').innerHTML = html;
+}
+
+function aplicarTema(t){
+  document.body.classList.toggle('tema-claro', t === 'claro');
+}
+aplicarTema(localStorage.getItem('mf_tema') || 'escuro');
+
+popularMeses();
+carregarDetalhamento();
+</script>
+</body>
+</html>
