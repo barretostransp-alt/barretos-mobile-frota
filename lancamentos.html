@@ -247,7 +247,7 @@ var TITULOS_TIPO = {
 // uma foto por vez), então cada novo arquivo escolhido/tirado é somado
 // aqui em vez de substituir o que já tinha.
 var fotosSelecionadas = [];
-var MAX_FOTOS_POR_TIPO = { pre_viagem:1, abastecimento:20, diverso:1 };
+var MAX_FOTOS_POR_TIPO = { pre_viagem:20, abastecimento:20, diverso:1 };
 
 function adicionarFotos_(fileList){
   var max = MAX_FOTOS_POR_TIPO[tipoAtual] || 1;
@@ -307,7 +307,7 @@ async function selecionarTipo(tipo){
   }
 
   document.getElementById('f-foto-galeria').multiple = (MAX_FOTOS_POR_TIPO[tipo] || 1) > 1;
-  document.getElementById('label-fotos').textContent = (tipo === 'abastecimento') ? 'Fotos do abastecimento *' : 'Foto *';
+  document.getElementById('label-fotos').textContent = (MAX_FOTOS_POR_TIPO[tipo] || 1) > 1 ? 'Fotos *' : 'Foto *';
 }
 
 async function popularVeiculos(){
